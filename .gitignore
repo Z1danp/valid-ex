@@ -40,7 +40,7 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
-
+sensitive-data/
 # Environment Variables & Secrets
 .env
 .env.local
