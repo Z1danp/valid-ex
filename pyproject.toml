@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# `services/analytics` is prepended to sys.path so tests can use
+# `from src.calibration import ...` regardless of the current directory.
+pythonpath = ["services/analytics"]
+testpaths = ["services/analytics/tests"]

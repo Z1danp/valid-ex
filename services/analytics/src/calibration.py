@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import sys
 from scipy.stats import linregress
 from typing import List, Dict, Any, Union
 
@@ -92,3 +94,10 @@ def create_calibration(
         "lod": lod,
         "loq": loq,
     }
+
+x = [0.0, 0.1, 0.3, 0.5, 0.7, 0.8, 1.0]
+y = [33.25, 2279.39, 5403.57, 9132.67, 12614.31, 13896.79, 17610.61]
+
+result = create_calibration(x, y)
+
+# print(result)

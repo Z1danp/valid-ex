@@ -61,3 +61,5 @@ def test_negative_or_zero_slope_raises_value_error():
     y = [5000.0, 5000.0, 5000.0]  # Flat line
     with pytest.raises(ValueError, match="Slope must be positive"):
         create_calibration(x, y)
+
+print(test_create_calibration_with_mo_lab_data())
