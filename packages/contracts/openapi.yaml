@@ -1,0 +1,860 @@
+openapi: 3.0.3
+info:
+  title: Valid-Ex API Contract
+  version: 1.0.0
+  description: |
+    Auditable Statistical Calibration, Residual Diagnostics, & Native Formula Excel Engine
+    for Analytical Chemistry (ISO/IEC 17025 & EURACHEM Compliant).
+    
+    Serves as the Single Source of Truth (SSOT) between Frontend (React @ Vercel)
+    and API Gateway (Hono @ Vercel Serverless).
+
+servers:
+  - url: /api/v1
+    description: Vercel Serverless API Gateway
+
+tags:
+  - name: Auth
+    description: Pengelolaan akun pengguna, autentikasi lokal, dan Google OAuth SSO
+  - name: Calibrations
+    description: Pengolahan kurva kalibrasi multi-analit, kuantifikasi sampel, dan evaluasi QC ISO 17025
+  - name: Reports
+    description: Pembangkitan dan pengunduhan lembar kerja Excel (.xlsx) dengan formula native
+
+paths:
+  # =========================================================================
+  # AUTH DOMAIN
+  # =========================================================================
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Pendaftaran pengguna baru (Lokal Email & Password)
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Pengguna berhasil didaftarkan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '409':
+          description: Email sudah terdaftar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Masuk menggunakan Email dan Password lokal
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login berhasil, mengembalikan JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Akun terdaftar via OAuth (penolakan login manual tanpa password)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Kredensial tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Autentikasi Single Sign-On via Google OAuth
+      operationId: loginGoogleOAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleAuthRequest'
+      responses:
+        '200':
+          description: Autentikasi Google berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Token Google OAuth tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Mengambil profil pengguna yang sedang login
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profil pengguna berhasil diambil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # =========================================================================
+  # CALIBRATION & MEASUREMENT DOMAIN
+  # =========================================================================
+  /calibrations:
+    post:
+      tags: [Calibrations]
+      summary: Validasi, perhitungan, dan penyimpanan batch pengujian kalibrasi
+      description: |
+        Menerima batch pengujian lengkap (standar dan sampel multi-analit).
+        Backend memvalidasi perhitungan metrologi via `@valid-ex/math`, mengevaluasi kriteria QC
+        (korelasi Pearson, CCV drift, RPD duplo, recovery spike), dan menyimpan data secara ACID.
+        Sesuai Invariant D4 & ADR-0005, jika QC gagal, data tetap disimpan dengan status INVALID_QC (Soft-Flag).
+      operationId: createCalibrationBatch
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalibrationBatchRequest'
+      responses:
+        '201':
+          description: Batch kalibrasi berhasil diproses dan disimpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          description: Pelanggaran batas metrologi fatal (misal deret standar non-zero < 5 titik)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Calibrations]
+      summary: Mengambil daftar riwayat batch kalibrasi pengguna
+      operationId: listCalibrationBatches
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: instrument
+          in: query
+          schema:
+            $ref: '#/components/schemas/InstrumentType'
+        - name: qcStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/QCStatus'
+      responses:
+        '200':
+          description: Daftar batch kalibrasi berhasil diambil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /calibrations/{id}:
+    get:
+      tags: [Calibrations]
+      summary: Mengambil detail lengkap 1 batch pengujian dan hasil kuantifikasinya
+      operationId: getCalibrationBatchById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CalibrationIdParam'
+      responses:
+        '200':
+          description: Detail batch kalibrasi ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationBatchResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    delete:
+      tags: [Calibrations]
+      summary: Menghapus batch kalibrasi
+      operationId: deleteCalibrationBatch
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CalibrationIdParam'
+      responses:
+        '204':
+          description: Batch kalibrasi berhasil dihapus
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # =========================================================================
+  # REPORT & SPREADSHEET EXPORT DOMAIN
+  # =========================================================================
+  /calibrations/{id}/export:
+    get:
+      tags: [Reports]
+      summary: Mengunduh lembar kerja spreadsheet audit trail (.xlsx)
+      description: |
+        Menghasilkan file Excel biner (.xlsx) berisi formula native Excel (=SLOPE, =INTERCEPT, =IF)
+        dan tabel terstruktur. Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
+      operationId: exportCalibrationExcel
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CalibrationIdParam'
+      responses:
+        '200':
+          description: File spreadsheet binary hasil olah data (.xlsx)
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="ICP-MS_Batch_2026-09-27.xlsx"'
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+# ===========================================================================
+# COMPONENTS & SCHEMAS
+# ===========================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CalibrationIdParam:
+      name: id
+      in: path
+      required: true
+      description: UUID unik batch kalibrasi
+      schema:
+        type: string
+        format: uuid
+        example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+
+  responses:
+    BadRequestError:
+      description: Request payload tidak valid atau gagal validasi skema
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Token autentikasi hilang, kedaluwarsa, atau tidak valid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Sumber daya yang diminta tidak ditemukan
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # -----------------------------------------------------------------------
+    # Auth Schemas
+    # -----------------------------------------------------------------------
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "analis@lab.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SuperSecureLab123!"
+        name:
+          type: string
+          minLength: 2
+          example: "Zidan"
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "analis@lab.com"
+        password:
+          type: string
+          format: password
+          example: "SuperSecureLab123!"
+
+    GoogleAuthRequest:
+      type: object
+      required: [idToken]
+      properties:
+        idToken:
+          type: string
+          description: Google OAuth Identity Token
+          example: "eyJhbGciOiJSUzI1NiIs..."
+
+    UserProfile:
+      type: object
+      required: [id, email, name, authProvider, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        authProvider:
+          type: string
+          enum: [local, google]
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWT Access Token
+        tokenType:
+          type: string
+          default: "Bearer"
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    # -----------------------------------------------------------------------
+    # Metrology & Unit Schemas
+    # -----------------------------------------------------------------------
+    InstrumentType:
+      type: string
+      enum: [ICP-MS, ICP-OES, AAS, HPLC, GC-MS]
+      example: "ICP-MS"
+
+    InputMode:
+      type: string
+      enum: [raw_signal, in_vial_concentration]
+      description: |
+        - raw_signal: pembacaan berupa detector response (cps/intensitas/luas area). Kurva OLS dihitung y = mx + c.
+        - in_vial_concentration: pembacaan berupa konsentrasi larutan bersih hasil perhitungan software alat.
+      example: "in_vial_concentration"
+
+    MetrologyUnits:
+      type: object
+      required: [solutionConcUnit, solidResultUnit, weightUnit, volumeUnit]
+      properties:
+        solutionConcUnit:
+          type: string
+          enum: [ppb, ppm, ppt]
+          description: "Satuan konsentrasi larutan di vial (ppb = ug/L, ppm = mg/L, ppt = ng/L)"
+          example: "ppb"
+        solidResultUnit:
+          type: string
+          enum: [mg/kg, ug/kg, percent]
+          description: "Satuan hasil akhir kuantifikasi sampel padatan"
+          default: "mg/kg"
+          example: "mg/kg"
+        weightUnit:
+          type: string
+          enum: [g, mg]
+          default: "g"
+          example: "g"
+        volumeUnit:
+          type: string
+          enum: [mL, L]
+          default: "mL"
+          example: "mL"
+        signalUnit:
+          type: string
+          enum: [cps, intensity, peak_area]
+          nullable: true
+          description: "Satuan pembacaan mentah alat (wajib diisi jika inputMode = raw_signal)"
+          example: "cps"
+
+    SampleType:
+      type: string
+      enum: [sample, blank_method, ccv, spike, duplicate]
+      description: |
+        - sample: sampel uji rutin lab
+        - blank_method: blanko metode preparasi asam (untuk koreksi C_blank)
+        - ccv: continuing calibration verification (larutan standar kontrol)
+        - spike: sampel yang ditambahkan larutan standar spike (matrix spike)
+        - duplicate: sampel ulangan duplo untuk verifikasi presisi RPD
+      example: "sample"
+
+    DetectionZone:
+      type: string
+      enum: [NOT_DETECTED, QUALITATIVE_ONLY, VALID_QUANTIFICATION]
+      description: |
+        - NOT_DETECTED: C_net <= 0 atau C_net < LOD (dilaporkan 'ND')
+        - QUALITATIVE_ONLY: LOD <= C_net < LOQ (dilaporkan '< [LOQ_metode]')
+        - VALID_QUANTIFICATION: C_net >= LOQ (dilaporkan angka numerik mg/kg)
+      example: "VALID_QUANTIFICATION"
+
+    QCStatus:
+      type: string
+      enum: [PASSED, INVALID_QC]
+      example: "PASSED"
+
+    QCCriteriaConfig:
+      type: object
+      properties:
+        minR:
+          type: number
+          default: 0.995
+          description: "Batas minimal korelasi Pearson kurva linearitas"
+          example: 0.995
+        ccvRecoveryMin:
+          type: number
+          default: 90.0
+          description: "Batas minimal % recovery CCV / larutan kontrol"
+          example: 90.0
+        ccvRecoveryMax:
+          type: number
+          default: 110.0
+          description: "Batas maksimal % recovery CCV"
+          example: 110.0
+        spikeRecoveryMin:
+          type: number
+          default: 60.0
+          description: "Batas minimal % recovery matrix spike"
+          example: 60.0
+        spikeRecoveryMax:
+          type: number
+          default: 115.0
+          description: "Batas maksimal % recovery matrix spike"
+          example: 115.0
+        maxRpd:
+          type: number
+          default: 25.0
+          description: "Batas maksimal % RPD pada sampel duplo"
+          example: 25.0
+
+    # -----------------------------------------------------------------------
+    # DataGrid Row Input Schemas
+    # -----------------------------------------------------------------------
+    StandardPointReading:
+      type: object
+      required: [nominalConc]
+      properties:
+        nominalConc:
+          type: number
+          description: "Konsentrasi nominal larutan standar (dalam solutionConcUnit)"
+          example: 10.0
+        signal:
+          type: number
+          nullable: true
+          description: "Pembacaan respon detektor (hanya diisi jika inputMode = raw_signal)"
+          example: 12500.0
+
+    StandardRowInput:
+      type: object
+      required: [standardName, readings]
+      properties:
+        standardName:
+          type: string
+          example: "Std 1"
+        readings:
+          type: object
+          description: "Map nama analit -> pembacaan standar"
+          additionalProperties:
+            $ref: '#/components/schemas/StandardPointReading'
+          example:
+            Al: { nominalConc: 10.0, signal: 1500.0 }
+            Pb: { nominalConc: 1.0, signal: 240.0 }
+            Cd: { nominalConc: 0.5, signal: 95.0 }
+
+    SampleRowInput:
+      type: object
+      required: [sampleId, sampleType, weight, volume, df, readings]
+      properties:
+        sampleId:
+          type: string
+          description: "ID atau label sampel"
+          example: "1111 (1)"
+        sampleType:
+          $ref: '#/components/schemas/SampleType'
+        parentSampleId:
+          type: string
+          nullable: true
+          description: "ID sampel acuan (wajib untuk sampleType: duplicate dan spike)"
+          example: "1111 (1)"
+        spikeAdded:
+          type: object
+          nullable: true
+          description: "Konsentrasi standar spike yang ditambahkan ke larutan (dalam solutionConcUnit)"
+          additionalProperties:
+            type: number
+          example:
+            Al: 20.0
+            Pb: 2.0
+        expectedConc:
+          type: object
+          nullable: true
+          description: "Konsentrasi target teoritis larutan kontrol / CCV (dalam solutionConcUnit)"
+          additionalProperties:
+            type: number
+          example:
+            Al: 5.0
+            Pb: 1.0
+        weight:
+          type: number
+          description: "Bobot penimbangan sampel padatan (gram)"
+          example: 0.2014
+        volume:
+          type: number
+          description: "Volume akhir labu ukur preparasi (mL)"
+          example: 50.0
+        df:
+          type: number
+          default: 1.0
+          description: "Faktor pengenceran (Dilution Factor)"
+          example: 1.0
+        readings:
+          type: object
+          description: "Map nama analit -> nilai pembacaan alat (sinyal cps atau konsentrasi terhitung di vial)"
+          additionalProperties:
+            type: number
+          example:
+            Al: 38.52
+            Pb: 1.16
+            Cd: 0.031
+
+    # -----------------------------------------------------------------------
+    # Batch Request & Response Schemas
+    # -----------------------------------------------------------------------
+    CalibrationBatchRequest:
+      type: object
+      required:
+        - title
+        - instrument
+        - inputMode
+        - units
+        - analytes
+        - standards
+        - samples
+      properties:
+        title:
+          type: string
+          example: "Pengujian ICP-MS Batch Biskuit Gandum"
+        instrument:
+          $ref: '#/components/schemas/InstrumentType'
+        inputMode:
+          $ref: '#/components/schemas/InputMode'
+        units:
+          $ref: '#/components/schemas/MetrologyUnits'
+        qcCriteria:
+          $ref: '#/components/schemas/QCCriteriaConfig'
+        analytes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["Al", "Pb", "Cd", "As", "Hg"]
+        standards:
+          type: array
+          items:
+            $ref: '#/components/schemas/StandardRowInput'
+          minItems: 4 # Blank + minimal 3 titik screening (Invariant D1: 5 untuk kurva formal)
+        samples:
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleRowInput'
+          maxItems: 250 # Invariant T2: serverless memory bound
+
+    AnalyteCurveMetrics:
+      type: object
+      required: [slope, intercept, r, rSquared, syx, lodInstrument, loqInstrument, lodMethod, loqMethod]
+      properties:
+        slope:
+          type: number
+          example: 240.5
+        intercept:
+          type: number
+          example: 1.2
+        r:
+          type: number
+          description: "Koefisien korelasi Pearson"
+          example: 0.9998
+        rSquared:
+          type: number
+          description: "Koefisien determinasi R²"
+          example: 0.9996
+        syx:
+          type: number
+          description: "Standar deviasi residual regresi s_{y/x}"
+          example: 0.045
+        lodInstrument:
+          type: number
+          description: "Limit of Detection instrumen di vial (dalam solutionConcUnit)"
+          example: 0.005
+        loqInstrument:
+          type: number
+          description: "Limit of Quantification instrumen di vial (dalam solutionConcUnit)"
+          example: 0.015
+        lodMethod:
+          type: number
+          description: "Batas deteksi metode pada sampel padatan (dalam solidResultUnit)"
+          example: 0.00125
+        loqMethod:
+          type: number
+          description: "Batas kuantifikasi metode pada sampel padatan (dalam solidResultUnit)"
+          example: 0.00375
+
+    AnalyteSampleResult:
+      type: object
+      required: [cRaw, cNet, detectionZone, reportedValue]
+      properties:
+        cRaw:
+          type: number
+          description: "Pembacaan konsentrasi di vial sebelum koreksi blanko (dalam solutionConcUnit)"
+          example: 1.16
+        cNet:
+          type: number
+          description: "Konsentrasi larutan bersih setelah koreksi blanko (C_sample - C_blank)"
+          example: 1.15
+        concSolid:
+          type: number
+          nullable: true
+          description: "Hasil kuantifikasi padatan (dalam solidResultUnit). NULL jika cNet < LOQ."
+          example: 0.28678
+        detectionZone:
+          $ref: '#/components/schemas/DetectionZone'
+        reportedValue:
+          type: string
+          description: "Format pelaporan resmi ISO 17025 ('ND', '< [LOQ_metode]', atau angka desimal)"
+          example: "0.287 mg/kg"
+        rpd:
+          type: number
+          nullable: true
+          description: "% Relative Percent Difference jika baris ini adalah duplo"
+          example: 1.72
+        spikeRecovery:
+          type: number
+          nullable: true
+          description: "% Recovery jika baris ini adalah matrix spike"
+          example: 99.0
+        ccvRecovery:
+          type: number
+          nullable: true
+          description: "% Recovery jika baris ini adalah CCV / larutan kontrol"
+          example: 101.2
+
+    EvaluatedSampleRow:
+      type: object
+      required: [sampleId, sampleType, weight, volume, df, analytes]
+      properties:
+        sampleId:
+          type: string
+          example: "1111 (1)"
+        sampleType:
+          $ref: '#/components/schemas/SampleType'
+        parentSampleId:
+          type: string
+          nullable: true
+          example: null
+        weight:
+          type: number
+          example: 0.2014
+        volume:
+          type: number
+          example: 50.0
+        df:
+          type: number
+          example: 1.0
+        analytes:
+          type: object
+          description: "Map nama analit -> hasil evaluasi metrologi"
+          additionalProperties:
+            $ref: '#/components/schemas/AnalyteSampleResult'
+
+    QCViolationRecord:
+      type: object
+      required: [rule, analyte, expected, actual, message]
+      properties:
+        rule:
+          type: string
+          enum: [LINEARITY_R, CCV_RECOVERY, SPIKE_RECOVERY, DUPLICATE_RPD]
+          example: "CCV_RECOVERY"
+        analyte:
+          type: string
+          example: "Pb"
+        sampleId:
+          type: string
+          nullable: true
+          example: "CCV-Mid"
+        expected:
+          type: string
+          example: "90.0% - 110.0%"
+        actual:
+          type: string
+          example: "115.4%"
+        message:
+          type: string
+          example: "Continuing Calibration Verification (CCV) melebihi batas drift toleransi 10%"
+
+    CalibrationBatchResponse:
+      type: object
+      required:
+        - id
+        - title
+        - instrument
+        - inputMode
+        - units
+        - qcStatus
+        - qcViolations
+        - analytesSummary
+        - evaluatedSamples
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        instrument:
+          $ref: '#/components/schemas/InstrumentType'
+        inputMode:
+          $ref: '#/components/schemas/InputMode'
+        units:
+          $ref: '#/components/schemas/MetrologyUnits'
+        qcStatus:
+          $ref: '#/components/schemas/QCStatus'
+        qcViolations:
+          type: array
+          items:
+            $ref: '#/components/schemas/QCViolationRecord'
+        analytesSummary:
+          type: object
+          description: "Map nama analit -> ringkasan metrologi kurva regresi"
+          additionalProperties:
+            $ref: '#/components/schemas/AnalyteCurveMetrics'
+        evaluatedSamples:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatedSampleRow'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CalibrationListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, title, instrument, qcStatus, createdAt]
+            properties:
+              id:
+                type: string
+                format: uuid
+              title:
+                type: string
+              instrument:
+                $ref: '#/components/schemas/InstrumentType'
+              qcStatus:
+                $ref: '#/components/schemas/QCStatus'
+              createdAt:
+                type: string
+                format: date-time
+        meta:
+          type: object
+          required: [page, limit, totalItems, totalPages]
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            totalItems:
+              type: integer
+            totalPages:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Permintaan tidak dapat diproses."
+        details:
+          type: array
+          items:
+            type: string
+          example: ["Deret kalibrasi wajib memiliki minimal 5 konsentrasi non-zero."]
