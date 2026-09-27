@@ -20,6 +20,8 @@ tags:
     description: Pengolahan kurva kalibrasi multi-analit, kuantifikasi sampel, dan evaluasi QC ISO 17025
   - name: Reports
     description: Pembangkitan dan pengunduhan lembar kerja Excel (.xlsx) dengan formula native
+  - name: QCProfiles
+    description: Pengelolaan profil kriteria QC ber-versi (governed, immutable, bersitasi methodRef)
 
 paths:
   # =========================================================================
@@ -272,6 +274,79 @@ paths:
           $ref: '#/components/responses/NotFoundError'
 
 # ===========================================================================
+# QC CRITERIA PROFILE DOMAIN (Governed, Versioned)
+# ===========================================================================
+  /qc-profiles:
+    get:
+      tags: [QCProfiles]
+      summary: Mengambil daftar profil kriteria QC milik pengguna
+      operationId: listQcProfiles
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daftar profil berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QCCriteriaProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags: [QCProfiles]
+      summary: Membuat profil kriteria QC baru (versi berikutnya bila nama sama)
+      operationId: createQcProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QCCriteriaProfileInput'
+      responses:
+        '201':
+          description: Profil berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QCCriteriaProfile'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          description: Profil tidak valid (band tidak kontigu, tidak ada catch-all, atau analit duplikat)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /qc-profiles/{id}:
+    get:
+      tags: [QCProfiles]
+      summary: Mengambil satu profil kriteria QC (versi terbaru)
+      operationId: getQcProfileById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QcProfileIdParam'
+      responses:
+        '200':
+          description: Profil ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QCCriteriaProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+# ===========================================================================
 # COMPONENTS & SCHEMAS
 # ===========================================================================
 components:
@@ -291,6 +366,15 @@ components:
         type: string
         format: uuid
         example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+    QcProfileIdParam:
+      name: id
+      in: path
+      required: true
+      description: UUID unik profil kriteria QC
+      schema:
+        type: string
+        format: uuid
+        example: "3f8a1c2e-9b7d-4bad-9bdd-2b0d7b3dcb6d"
 
   responses:
     BadRequestError:
@@ -403,13 +487,17 @@ components:
       type: string
       enum: [raw_signal, in_vial_concentration]
       description: |
-        - raw_signal: pembacaan berupa detector response (cps/intensitas/luas area). Kurva OLS dihitung y = mx + c.
-        - in_vial_concentration: pembacaan berupa konsentrasi larutan bersih hasil perhitungan software alat.
+        Menentukan SEMANTIK `SampleRowInput.readings` (bukan standar kalibrasi):
+        - raw_signal: readings berisi detector response (cps/intensitas/luas area). C_sample diperoleh via inverse regression (y - c) / m.
+        - in_vial_concentration: readings berisi konsentrasi in-vial hasil software alat (mis. Qtegra). C_sample dipakai langsung.
+
+        CATATAN PENTING: deret standar kalibrasi WAJIB selalu menyertakan `signal` (c/s) pada kedua mode,
+        karena kurva OLS y = mx + c hanya dapat dibangun dari pasangan (konsentrasi nominal, respon detektor).
       example: "in_vial_concentration"
 
     MetrologyUnits:
       type: object
-      required: [solutionConcUnit, solidResultUnit, weightUnit, volumeUnit]
+      required: [solutionConcUnit, solidResultUnit, weightUnit, volumeUnit, signalUnit]
       properties:
         solutionConcUnit:
           type: string
@@ -435,8 +523,7 @@ components:
         signalUnit:
           type: string
           enum: [cps, intensity, peak_area]
-          nullable: true
-          description: "Satuan pembacaan mentah alat (wajib diisi jika inputMode = raw_signal)"
+          description: "Satuan pembacaan respon detektor. WAJIB, karena deret standar selalu menggunakan signal pada kedua inputMode."
           example: "cps"
 
     SampleType:
@@ -464,46 +551,186 @@ components:
       enum: [PASSED, INVALID_QC]
       example: "PASSED"
 
-    QCCriteriaConfig:
+    # -----------------------------------------------------------------------
+    # QC Criteria Profile Schemas (Governed, Versioned, Banded)
+    # -----------------------------------------------------------------------
+    # Model: kriteria QC TIDAK boleh di-hardcode. Setiap batch mereferensikan
+    # sebuah profil bernama & ber-versi yang bersitasi methodRef. Analis TIDAK
+    # dapat meng-override angka per batch. Profil di-snapshot immutable ke batch.
+    #
+    # Sumbu variasi: per analit x per tipe QC, dengan `bands` (rentang konsentrasi).
+    # Kriteria flat direpresentasikan sebagai SATU band catch-all (maxConc: null).
+    # -----------------------------------------------------------------------
+    RecoveryBand:
       type: object
+      required: [maxConc, minRecovery, maxRecovery]
       properties:
-        minR:
+        maxConc:
           type: number
-          default: 0.995
-          description: "Batas minimal korelasi Pearson kurva linearitas"
-          example: 0.995
-        ccvRecoveryMin:
+          nullable: true
+          description: "Batas ATAS band (eksklusif) dalam solutionConcUnit. null = catch-all (tak hingga). Band terakhir WAJIB null."
+          example: 100.0
+        minRecovery:
           type: number
-          default: 90.0
-          description: "Batas minimal % recovery CCV / larutan kontrol"
+          description: "% recovery minimum yang diterima pada band ini"
           example: 90.0
-        ccvRecoveryMax:
+        maxRecovery:
           type: number
-          default: 110.0
-          description: "Batas maksimal % recovery CCV"
+          description: "% recovery maksimum yang diterima pada band ini"
           example: 110.0
-        spikeRecoveryMin:
+
+    RpdBand:
+      type: object
+      required: [maxConc, maxRpd]
+      properties:
+        maxConc:
           type: number
-          default: 60.0
-          description: "Batas minimal % recovery matrix spike"
-          example: 60.0
-        spikeRecoveryMax:
-          type: number
-          default: 115.0
-          description: "Batas maksimal % recovery matrix spike"
-          example: 115.0
+          nullable: true
+          description: "Batas ATAS band (eksklusif) dalam solutionConcUnit. null = catch-all (tak hingga). Band terakhir WAJIB null."
+          example: 10.0
         maxRpd:
           type: number
-          default: 25.0
-          description: "Batas maksimal % RPD pada sampel duplo"
+          description: "% RPD maksimum yang diterima pada band ini"
           example: 25.0
+
+    AnalyteCriteria:
+      type: object
+      required: [ccv, spike, duplicate]
+      properties:
+        ccv:
+          type: object
+          required: [bands]
+          properties:
+            bands:
+              type: array
+              minItems: 1
+              description: "Band terurut menaik; batas kontigu & non-overlap; elemen terakhir maxConc wajib null."
+              items:
+                $ref: '#/components/schemas/RecoveryBand'
+        spike:
+          type: object
+          required: [bands]
+          properties:
+            bands:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/RecoveryBand'
+        duplicate:
+          type: object
+          required: [bands]
+          properties:
+            bands:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/RpdBand'
+
+    QCCriteriaProfile:
+      type: object
+      required: [id, name, methodRef, version, effectiveDate, linearity, analytes]
+      description: |
+        Profil kriteria QC yang immutable & ber-versi. Mengubah angka = membuat versi baru.
+        Batch WAJIB merujuk profil ini; tidak ada override per batch.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "QC Criteria Check — SOP Lab"
+        methodRef:
+          type: string
+          description: "Sitasi sumber kriteria (nomor SOP / metode regulatori). Wajib untuk jejak audit."
+          example: "Lab SOP QC CRITERIA CHECK"
+        version:
+          type: integer
+          minimum: 1
+          example: 1
+        effectiveDate:
+          type: string
+          format: date
+          example: "2026-09-27"
+        solutionConcUnit:
+          type: string
+          enum: [ppb, ppm, ppt]
+          nullable: true
+          description: "Satuan batas band. Wajib bila terdapat band dengan maxConc finit; boleh null bila seluruh profil flat."
+        linearity:
+          type: object
+          required: [minR]
+          properties:
+            minR:
+              type: number
+              description: "Batas minimal korelasi Pearson (global per profil, bukan per band)"
+              example: 0.995
+        analytes:
+          type: object
+          description: "WAJIB memuat entri untuk setiap analit yang dipakai batch (tanpa fallback implisit)."
+          additionalProperties:
+            $ref: '#/components/schemas/AnalyteCriteria'
+
+    QCCriteriaProfileInput:
+      type: object
+      required: [name, methodRef, effectiveDate, linearity, analytes]
+      description: "Payload pembuatan profil baru (server yang menetapkan id & version)."
+      properties:
+        name:
+          type: string
+        methodRef:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+        solutionConcUnit:
+          type: string
+          enum: [ppb, ppm, ppt]
+          nullable: true
+        linearity:
+          type: object
+          required: [minR]
+          properties:
+            minR:
+              type: number
+        analytes:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/AnalyteCriteria'
+
+    QcProfileRef:
+      type: object
+      required: [id, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+
+    AppliedCriteria:
+      type: object
+      description: "Jejak audit: kriteria persis yang diterapkan pada evaluasi ini."
+      properties:
+        testValue:
+          type: number
+          nullable: true
+          description: "Nilai konsentrasi yang dipakai untuk memilih band (CCV=expectedConc, spike=spikeAdded, duplo=mean C_net)."
+        bandMaxConc:
+          type: number
+          nullable: true
+        min:
+          type: number
+          nullable: true
+        max:
+          type: number
+          nullable: true
 
     # -----------------------------------------------------------------------
     # DataGrid Row Input Schemas
     # -----------------------------------------------------------------------
     StandardPointReading:
       type: object
-      required: [nominalConc]
+      required: [nominalConc, signal]
       properties:
         nominalConc:
           type: number
@@ -511,8 +738,7 @@ components:
           example: 10.0
         signal:
           type: number
-          nullable: true
-          description: "Pembacaan respon detektor (hanya diisi jika inputMode = raw_signal)"
+          description: "Pembacaan respon detektor (c/s) untuk titik standar ini. WAJIB pada kedua inputMode (sumber kurva kalibrasi)."
           example: 12500.0
 
     StandardRowInput:
@@ -598,6 +824,7 @@ components:
         - instrument
         - inputMode
         - units
+        - qcProfileId
         - analytes
         - standards
         - samples
@@ -611,8 +838,11 @@ components:
           $ref: '#/components/schemas/InputMode'
         units:
           $ref: '#/components/schemas/MetrologyUnits'
-        qcCriteria:
-          $ref: '#/components/schemas/QCCriteriaConfig'
+        qcProfileId:
+          type: string
+          format: uuid
+          description: "Referensi profil kriteria QC ber-versi. Tidak ada override kriteria per batch."
+          example: "3f8a1c2e-9b7d-4bad-9bdd-2b0d7b3dcb6d"
         analytes:
           type: array
           items:
@@ -632,7 +862,7 @@ components:
 
     AnalyteCurveMetrics:
       type: object
-      required: [slope, intercept, r, rSquared, syx, lodInstrument, loqInstrument, lodMethod, loqMethod]
+      required: [slope, intercept, r, rSquared, syx, lodInstrument, loqInstrument]
       properties:
         slope:
           type: number
@@ -654,24 +884,16 @@ components:
           example: 0.045
         lodInstrument:
           type: number
-          description: "Limit of Detection instrumen di vial (dalam solutionConcUnit)"
+          description: "Limit of Detection instrumen di vial (dalam solutionConcUnit) = 3 * syx / slope"
           example: 0.005
         loqInstrument:
           type: number
-          description: "Limit of Quantification instrumen di vial (dalam solutionConcUnit)"
+          description: "Limit of Quantification instrumen di vial (dalam solutionConcUnit) = 10 * syx / slope"
           example: 0.015
-        lodMethod:
-          type: number
-          description: "Batas deteksi metode pada sampel padatan (dalam solidResultUnit)"
-          example: 0.00125
-        loqMethod:
-          type: number
-          description: "Batas kuantifikasi metode pada sampel padatan (dalam solidResultUnit)"
-          example: 0.00375
 
     AnalyteSampleResult:
       type: object
-      required: [cRaw, cNet, detectionZone, reportedValue]
+      required: [cRaw, cNet, detectionZone, reportedValue, lodMethod, loqMethod]
       properties:
         cRaw:
           type: number
@@ -692,10 +914,18 @@ components:
           type: string
           description: "Format pelaporan resmi ISO 17025 ('ND', '< [LOQ_metode]', atau angka desimal)"
           example: "0.287 mg/kg"
+        lodMethod:
+          type: number
+          description: "LOD metode PADA SAMPEL INI (solidResultUnit), dihitung dari W/V/dF sampel ini"
+          example: 0.00125
+        loqMethod:
+          type: number
+          description: "LOQ metode PADA SAMPEL INI (solidResultUnit), dipakai pada string '< [LOQ_metode]'"
+          example: 0.00375
         rpd:
           type: number
           nullable: true
-          description: "% Relative Percent Difference jika baris ini adalah duplo"
+          description: "% Relative Percent Difference jika baris ini adalah duplo. Bernilai null bila rata-rata pasangan <= 0 (undefined)."
           example: 1.72
         spikeRecovery:
           type: number
@@ -738,7 +968,7 @@ components:
 
     QCViolationRecord:
       type: object
-      required: [rule, analyte, expected, actual, message]
+      required: [rule, analyte, expected, actual, message, profileVersion, appliedCriteria]
       properties:
         rule:
           type: string
@@ -760,6 +990,12 @@ components:
         message:
           type: string
           example: "Continuing Calibration Verification (CCV) melebihi batas drift toleransi 10%"
+        profileVersion:
+          type: integer
+          description: "Versi profil kriteria yang diterapkan saat pelanggaran ini terjadi (jejak audit)."
+          example: 1
+        appliedCriteria:
+          $ref: '#/components/schemas/AppliedCriteria'
 
     CalibrationBatchResponse:
       type: object
@@ -769,6 +1005,8 @@ components:
         - instrument
         - inputMode
         - units
+        - qcProfileRef
+        - qcProfileSnapshot
         - qcStatus
         - qcViolations
         - analytesSummary
@@ -786,6 +1024,12 @@ components:
           $ref: '#/components/schemas/InputMode'
         units:
           $ref: '#/components/schemas/MetrologyUnits'
+        qcProfileRef:
+          $ref: '#/components/schemas/QcProfileRef'
+        qcProfileSnapshot:
+          allOf:
+            - $ref: '#/components/schemas/QCCriteriaProfile'
+            - description: "Snapshot immutable kriteria yang benar-benar diterapkan pada batch ini (agar hasil reproducible saat audit)."
         qcStatus:
           $ref: '#/components/schemas/QCStatus'
         qcViolations:

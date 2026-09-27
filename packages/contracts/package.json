@@ -1,0 +1,19 @@
+{
+  "name": "@valid-ex/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Single Source of Truth: OpenAPI 3.0+ contract + generated TypeScript types",
+  "types": "./src/types.ts",
+  "exports": {
+    ".": "./src/types.ts"
+  },
+  "scripts": {
+    "gen": "openapi-typescript openapi.yaml -o src/types.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.6.3"
+  }
+}

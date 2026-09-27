@@ -1,0 +1,16 @@
+{
+  "name": "valid-ex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Auditable Statistical Calibration & Native Formula Excel Engine for Analytical Chemistry (ISO/IEC 17025)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:math": "pnpm --filter @valid-ex/math test",
+    "typecheck": "pnpm -r typecheck",
+    "gen:contracts": "pnpm --filter @valid-ex/contracts gen"
+  }
+}

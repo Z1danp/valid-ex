@@ -1,0 +1,22 @@
+{
+  "name": "@valid-ex/math",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isomorphic pure-TypeScript metrology engine: OLS, residual sy/x, LOD/LOQ, unit-aware quantification, banded QC criteria (ZERO runtime dependencies)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.5"
+  }
+}
