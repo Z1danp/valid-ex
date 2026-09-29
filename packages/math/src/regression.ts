@@ -43,8 +43,8 @@ export function linearRegression(points: Point[]): Regression {
     const dy = p.y - yMean
 
     sxx += dx * dx
-    sxy += dy * dy
-    syy += dx * dy
+    sxy += dx * dy
+    syy += dy * dy
   }
 
   // guard sxx
@@ -56,7 +56,9 @@ export function linearRegression(points: Point[]): Regression {
   const intercept = yMean - slope * xMean
   const ssRes = syy - slope * sxy
   const syx = Math.sqrt(ssRes / (n - 2))
-  const r = sxy / Math.sqrt(sxx * syy)
+  const denom = Math.sqrt(sxx * syy)
+  const r = denom === 0 ? 0 : sxy / denom
+  const rSquared = r * r
 
   return {
     n,
@@ -65,7 +67,9 @@ export function linearRegression(points: Point[]): Regression {
     rSquared,
     slope,
     syx,
-    sxx
+    sxx,
+    xMean,
+    yMean
   }
 }
 
@@ -74,7 +78,30 @@ export function linearRegression(points: Point[]): Regression {
  * Guard: panjang array harus sama & >= 2; denom 0 -> 0.
  */
 export function pearsonR(xs: number[], ys: number[]): number {
-  throw new Error('Not implemented: pearsonR');
+  if (xs.length !== ys.length) { throw new Error('xs and ys must same length') }
+  if (xs.length < 2) throw new Error('pearsonR need at least 3 point')
+
+  const n = xs.length
+  const xMean = xs.reduce((a, b) => a + b, 0) / n
+  const yMean = ys.reduce((a, b) => a + b, 0) / n
+
+  let sxx = 0
+  let syy = 0
+  let sxy = 0
+
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i]! - xMean
+    const dy = ys[i]! - yMean
+    sxx += dx * dx
+    syy += dy * dy
+    sxy += dx * dy
+  }
+
+  const denom = Math.sqrt(sxx * syy)
+
+  if (denom === 0) { return 0 }
+
+  return sxy / denom
 }
 
 /**
@@ -83,5 +110,9 @@ export function pearsonR(xs: number[], ys: number[]): number {
  * Throw bila kurang.
  */
 export function assertMinNonZeroLevels(points: Point[], minNonZeroLevels = 5): void {
-  throw new Error('Not implemented: assertMinNonZeroLevels');
+  const nonZeroLevels = points.filter((p) => p.x > 0).length
+  if (nonZeroLevels < minNonZeroLevels) {
+    throw new Error(`Deret kalibrasi wajib punya minimal ${minNonZeroLevels} konsentrasi non-zero`)
+  }
+
 }
