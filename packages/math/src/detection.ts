@@ -96,5 +96,4 @@ export function toSolidConcentration(solutionConc: number, params: SolidConversi
 
   return baseMgPerKg * RESULT_FACTORS[solidResultUnit]
 
-  throw new Error('Not implemented: toSolidConcentration');
 }
