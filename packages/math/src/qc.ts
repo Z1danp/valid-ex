@@ -4,7 +4,10 @@
  * Guard: expected === 0 -> throw.
  */
 export function ccvRecovery(measured: number, expected: number): number {
-  throw new Error('Not implemented: ccvRecovery');
+  if (expected === 0) {
+    throw new Error('Expected cannot be 0')
+  }
+  return (measured / expected) * 100;
 }
 
 /**
@@ -13,7 +16,10 @@ export function ccvRecovery(measured: number, expected: number): number {
  * Guard: spikeAdded === 0 -> throw.
  */
 export function spikeRecovery(spikedMeasured: number, unspikedMeasured: number, spikeAdded: number): number {
-  throw new Error('Not implemented: spikeRecovery');
+  if (spikeAdded === 0) {
+    throw new Error('Spike added cannot be 0')
+  }
+  return ((spikedMeasured - unspikedMeasured) / spikeAdded) * 100
 }
 
 /**
@@ -22,5 +28,9 @@ export function spikeRecovery(spikedMeasured: number, unspikedMeasured: number, 
  * Guard: mean <= 0 -> return null (undefined, BUKAN Infinity/NaN).
  */
 export function relativePercentDifference(s1: number, s2: number): number | null {
-  throw new Error('Not implemented: relativePercentDifference');
+  const mean = (s1 + s2) / 2
+  if (mean <= 0) {
+    return null
+  }
+  return (Math.abs(s1 - s2) / mean) * 100
 }
