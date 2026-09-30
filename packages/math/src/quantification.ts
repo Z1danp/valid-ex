@@ -6,7 +6,12 @@ import type { DetectionZone, SolidResultUnit } from './types';
  * Guard: slope <= 0 -> throw.
  */
 export function inverseConcentration(signal: number, slope: number, intercept: number): number {
-  throw new Error('Not implemented: inverseConcentration');
+  if (slope <= 0) {
+    throw new Error ('Slope cannot be 0')
+  }
+
+  // inverse regression 
+  return (signal - intercept) / slope
 }
 
 /**
@@ -17,7 +22,13 @@ export function inverseConcentration(signal: number, slope: number, intercept: n
  * Batas: LOD inklusif (== lod -> QUALITATIVE_ONLY), LOQ inklusif.
  */
 export function classifyZone(cNet: number, lodInstrument: number, loqInstrument: number): DetectionZone {
-  throw new Error('Not implemented: classifyZone');
+  if (cNet <= 0 || cNet < lodInstrument) {
+    return 'NOT_DETECTED'
+  } else if (cNet < loqInstrument) {
+    return 'QUALITATIVE_ONLY'
+  } else {
+    return 'VALID_QUANTIFICATION'
+}
 }
 
 export interface ReportedValueParams {
@@ -36,5 +47,16 @@ export interface ReportedValueParams {
  *   VALID_QUANTIFICATION -> "{concSolid} {unit}"
  */
 export function formatReportedValue(params: ReportedValueParams): string {
+  const {zone, concSolid, loqMethod, solidResultUnit, decimals = 3} = params
+
+  switch (zone) {
+    case 'NOT_DETECTED':
+      return 'ND'
+    case 'QUALITATIVE_ONLY':
+      return `< ${loqMethod} ${solidResultUnit}`
+    case 'VALID_QUANTIFICATION':
+      return `${concSolid?.toFixed(decimals)} ${solidResultUnit}`
+
+  }
   throw new Error('Not implemented: formatReportedValue');
 }
