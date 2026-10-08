@@ -1,5 +1,5 @@
-import type { AnalyteCriteria, CalibrationInput, AnalyteSampleResult, CalibrationOutput, CurveMetrics, Point, QCStatus, QCViolation } from './types';
-import { resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linearRegression, instrumentDetectionLimits, inverseConcentration, classifyZone, toSolidConcentration, formatReportedValue, ccvRecovery, spikeRecovery, relativePercentDifference } from './index'
+import type { AnalyteCriteria, CalibrationInput, AnalyteSampleResult, CalibrationOutput, CurveMetrics, Point, QCStatus, QCViolation, EvaluatedSampleRow } from './types';
+import { resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linearRegression, instrumentDetectionLimits, inverseConcentration, classifyZone, toSolidConcentration, formatReportedValue, ccvRecovery, spikeRecovery, relativePercentDifference, type SolidConversionParams } from './index'
 
 /**
  * Orkestrator utama (ADR-0003: isomorphic zero-drift).
@@ -28,93 +28,148 @@ import { resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linear
  * 6. qcStatus = violations.length ? 'INVALID_QC' : 'PASSED' (soft-flag; TIDAK throw).
  *
  * Analit independen (Invariant D2): hasil tiap analit tidak saling mempengaruhi.
+ *
+ * -------------------------------------------------------------------------
+ * STATUS IMPLEMENTASI (todo kerjaan kamu):
+ * [x] 1. validateProfile + cari blanko metode
+ * [x] 2. kurva OLS per analit + assertMinNonZeroLevels + soft-flag LINEARITY_R
+ * [x] 3. LOD/LOQ instrumen + C_blank (mode-aware) + isi analyteContext
+ * [~] 4. sample evaluation: cRaw/cNet/zone/lodMethod/loqMethod/concSolid (WIP)
+ * [ ] 4a. Pisah loop: PASS 1 (analit) lalu PASS 2 (sample luar × analit dalam)
+ * [ ] 4b. Jangan skip sampleType !== 'sample' — proses blank/ccv/spike/dup juga
+ * [ ] 4c. formatReportedValue → reportedValue
+ * [ ] 4d. Assign AnalyteSampleResult ke analytesResult[analyte]
+ * [ ] 4e. Push EvaluatedSampleRow ke evaluatedSamples
+ * [ ] 4f. analytesSummary[analyte] = metrics (sekarang masih {})
+ * [ ] 5. QC numerik: ccvRecovery / spikeRecovery / RPD (+ parentSampleId)
+ * [ ] 5b. Soft-flag band: selectRecoveryBand / selectRpdBand → push QCViolation
+ * [ ] 6. Return sudah ada; pastikan semua field terisi lalu pnpm test:math
+ * -------------------------------------------------------------------------
  */
 export function evaluateCalibration(input: CalibrationInput): CalibrationOutput {
-  const qcViolations: QCViolation[] = []
-  const criteriaByAnalyte: Record<string, AnalyteCriteria> = {}
-  const analytesSummary: Record<string, CurveMetrics> = {}
+  // =========================================================================
+  // SETUP BATCH — sudah dikerjakan
+  // Validasi profil QC + wajib ada blanko metode (sampel preparasi, BUKAN blank standar kurva).
+  // =========================================================================
+  validateProfile(input.qcProfile)
+  const methodBlank = input.samples.find((s) => s.sampleType === 'blank_method')
+  if (!methodBlank) {
+    throw new Error("Batch must contain at least one sample with sampleType blank method")
+  }
 
-  // validasi profile
-  validateProfile(input.qcProfile);
-  // resolve kriteria per analit
+  // Akumulator hasil akhir + konteks per analit (criteria, metrics kurva, C_blank)
+  const qcViolations: QCViolation[] = []
+  const analytesSummary: Record<string, CurveMetrics> = {};
+  const analyteContext: Record<string, {
+    criteria: AnalyteCriteria;
+    metrics: CurveMetrics;
+    cBlank: number;
+  }> = {};
+  const evaluatedSamples: EvaluatedSampleRow[] = []
+
+  // =========================================================================
+  // PASS 1: KURVA + C_BLANK PER ANALIT — sudah dikerjakan
+  // TODO nanti: setelah blok ini selesai, TUTUP loop analit di sini.
+  //             Sample evaluation (PASS 2) harus di LUAR loop ini
+  //             (sample luar → analit dalam), supaya 1 EvaluatedSampleRow
+  //             berisi semua analit sekaligus.
+  // =========================================================================
   for (const analyte of input.analytes) {
-    criteriaByAnalyte[analyte] = resolveAnalyteCriteria(input.qcProfile, analyte);
-    // Build OLS Curve
-    // Transforms input standards into x and y format to preparation for calculate the curve calibrations
-    const points: Point[] = input.standards.filter((standard) => standard.readings[analyte] !== undefined).map((standard) => {
-      const reading = standard.readings[analyte]!
-      if (reading.nominalConc === null || reading.signal === null) {
-        throw new Error(`Analyte '${analyte}' has null nominalConc or signal at ${standard.standardName}`)
+    const criteria = resolveAnalyteCriteria(input.qcProfile, analyte);
+
+    // Standards: readings[analyte] = { nominalConc, signal } → Point { x, y }
+    // (beda dari sampel: readings[analyte] di sampel sudah number langsung)
+    const points: Point[] = input.standards.filter((s) => s.readings[analyte] !== undefined).map((s) => {
+      const reading = s.readings[analyte]
+
+      if (reading === undefined || reading.nominalConc === null || reading.signal === null) {
+        throw new Error(`Invalid standard point for analyte ${analyte}: nominalConc or signal is null`)
       }
+
       return {
         x: reading.nominalConc,
         y: reading.signal
       }
-    });
-    // checking minimum non-zero levels
+    })
+
+    // Invariant D1: minimal 5 level non-zero + blank standar di deret kalibrasi
     assertMinNonZeroLevels(points)
-    // calculate regression 
     const reg = linearRegression(points)
-    // cek linearity
-    if (reg.r < input.qcProfile.linearity.minR) {
+
+    // Soft-flag linearitas — jangan throw, cukup catat QCViolation
+    const minR = input.qcProfile.linearity.minR;
+    if (reg.r < minR) {
       qcViolations.push({
         rule: 'LINEARITY_R',
         analyte,
-        sampleId: null,
-        expected: `r >= ${input.qcProfile.linearity.minR}`,
         actual: `r = ${reg.r}`,
-        message: `Linearity r (${reg.r}) is below minimum ${input.qcProfile.linearity.minR}`,
-        profileVersion: input.qcProfile.version,
         appliedCriteria: {
-          testValue: reg.r,
           bandMaxConc: null,
-          min: input.qcProfile.linearity.minR,
-          max: null
-        }
+          max: null,
+          min: minR,
+          testValue: reg.r
+        },
+        expected: `r >= ${minR}`,
+        message: "Linearity correlation (r) must be greater than or equal to the minimum R specified in the QC profile.",
+        profileVersion: input.qcProfile.version,
+        sampleId: null
       })
     }
-    // Calculate instrument LOD and LOQ
-    const { lod: lodInstrument, loq: loqInstrument } = instrumentDetectionLimits(reg.slope, reg.syx);
-    analytesSummary[analyte] = {
-      ...reg,
-      lodInstrument,
-      loqInstrument
-    }
 
-    // cek blanko metode (sampleType 'blank_method') per analit -> C_blank.
-    const methodBlank = input.samples.find((sample) => sample.sampleType === 'blank_method');
+    // LOD/LOQ instrumen di vial (solutionConcUnit): k * syx / slope
+    // Nanti disimpan di CurveMetrics / analytesSummary — beda dari lodMethod (padatan per sampel)
+    const lodLoQInstrument = instrumentDetectionLimits(reg.slope, reg.syx)
 
-    // if no blank
-    if (!methodBlank) {
-      throw new Error(`Batch must contain at least one sample with sampleType 'blank_method'`);
-    }
-
-    // if analyte reading is missing in blank
-    const blankReading = methodBlank.readings[analyte];
+    // C_blank dari blanko metode: readings = number (bukan { signal })
+    // mode A (raw_signal) → inverse ke konsentrasi; mode B → pakai angka langsung
+    const blankReading = methodBlank.readings[analyte]
     if (blankReading === undefined || blankReading === null) {
-      throw new Error(`Blank method sample is missing reading for analyte '${analyte}'`);
+      throw new Error(`Blank method for analyte ${analyte} is not found`)
     }
 
+    const cBlank = input.inputMode === 'raw_signal' ? inverseConcentration(blankReading, reg.slope, reg.intercept) : blankReading
 
+    // Simpan konteks supaya PASS 2 tinggal pakai (jangan hitung ulang kurva)
+    analyteContext[analyte] = {
+      criteria,
+      metrics: {
+        slope: reg.slope,
+        intercept: reg.intercept,
+        r: reg.r,
+        rSquared: reg.rSquared,
+        syx: reg.syx,
+        lodInstrument: lodLoQInstrument.lod,
+        loqInstrument: lodLoQInstrument.loq
+      },
+      cBlank: cBlank
+    }
 
-    // calculate C_net for each sample
+    // TODO [4f]: analytesSummary[analyte] = analyteContext[analyte].metrics
+
+    // =========================================================================
+    // PASS 2: SAMPLE EVALUATION — WIP (masih di dalam loop analit → perlu dipindah)
+    // Alur yang sudah kamu tulis: reading → cRaw → cNet → zone → lod/loqMethod → concSolid
+    // Semua angka ini nanti masuk ke evaluatedSamples[].analytes[analyte] (AnalyteSampleResult)
+    // =========================================================================
     for (const sample of input.samples) {
-      // initialize sample analytes
-      const sampleAnalytes: Record<string, AnalyteSampleResult> = {};
+      const analytesResult = {}
+      // TODO [4b]: hapus continue ini — blank/ccv/spike/duplicate juga harus dievaluasi
+      if (sample.sampleType !== 'sample') continue
 
-      const reg = analytesSummary[analyte];
-      // calculate C_blank based on input mode
-      const cBlank = input.inputMode === 'raw_signal' ? inverseConcentration(blankReading, reg.slope, reg.intercept) : blankReading;
-      // calculate C_raw based on input mode
-      const cRaw = input.inputMode === 'raw_signal' ? inverseConcentration(sample.readings[analyte]!, reg.slope, reg.intercept) : sample.readings[analyte];
+      const reading = sample.readings[analyte]
+      if (reading === undefined || reading === null) {
+        throw new Error(`Reading for analyte ${analyte} is not found in sample ${sample.sampleId}`)
+      }
 
-      const cNet = cRaw! - cBlank;
+      // Larutan: cRaw (mode-aware) lalu koreksi blanko → cNet
+      const cRaw = input.inputMode === 'raw_signal' ? inverseConcentration(reading, analyteContext[analyte].metrics.slope, analyteContext[analyte].metrics.intercept) : reading
+      const cNet = cRaw - analyteContext[analyte].cBlank
 
-      // calculate detection Zone
-      const zone = classifyZone(cNet, reg.lodInstrument, reg.loqInstrument);
+      // Zona deteksi di level larutan (pakai lod/loq INSTRUMEN dari kurva)
+      const zone = classifyZone(cNet, analyteContext[analyte].metrics.lodInstrument, analyteContext[analyte].metrics.loqInstrument)
 
-      // Konversi unit
-      const conversionParams = {
+      // Konversi unit: W/V/df dari SAMPLE ini + unit dari batch
+      const conversionParams: SolidConversionParams = {
         volume: sample.volume,
         volumeUnit: input.units.volumeUnit,
         df: sample.df,
@@ -124,58 +179,28 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         solidResultUnit: input.units.solidResultUnit
       }
 
-      // get LoD/LoQ instrumen
-      const { lodInstrument, loqInstrument } = analytesSummary[analyte]
+      // lodMethod/loqMethod = batas metode di PADATAN untuk sampel ini (skala 1/berat)
+      const lodMethod = toSolidConcentration(analyteContext[analyte].metrics.lodInstrument, conversionParams)
+      const loqMethod = toSolidConcentration(analyteContext[analyte].metrics.loqInstrument, conversionParams)
 
-      const lodMethod = toSolidConcentration(lodInstrument, conversionParams);
-      const loqMethod = toSolidConcentration(loqInstrument, conversionParams);
+      // concSolid hanya diisi kalau zone valid; selain itu null (ND / qualitative)
+      const concSolid = zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null
 
-      // cek zone 
-      const concSolid = zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null;
-
-      const reportedValue = formatReportedValue({
-        zone,
-        concSolid,
-        loqMethod,
-        solidResultUnit: input.units.solidResultUnit
-      })
-
-      // cek ccv recovery
-      if (sample.sampleType === 'ccv') {
-        const ccvRecoveryValue = ccvRecovery(cRaw!, sample.expectedConc![analyte]!);
-      }
-
-      if (sample.sampleType === 'spike') {
-        const parentSample = input.samples.find((s) => s.sampleId === sample.parentSampleId)
-
-        if (!parentSample) {
-          throw new Error(`Parent sample ${sample.parentSampleId} not found`)
-        }
-        // cek spike recovery
-        const parentReading = parentSample.readings[analyte]
-        if (parentReading === undefined || parentReading === null) {
-          throw new Error(`Parent sample ${sample.parentSampleId} is missing reading for analyte '${analyte}'`)
-        }
-        // get unspike from parent sample
-        const cRawParent = input.inputMode === 'raw_signal' ? inverseConcentration(parentReading, reg.slope, reg.intercept) : parentReading
-        // get spikeAdded for this analyte
-        const added = sample.spikeAdded?.[analyte]
-        if (added === undefined || added === null) {
-          throw new Error(`Sample ${sample.sampleId} is missing spikeAdded for analyte '${analyte}'`)
-        }
-
-        const spikeRecoveryValue = spikeRecovery(cRaw!, cRawParent!, added!)
-
-        
-      }
-
-
+      // TODO [4c]: reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit })
+      // TODO [4d]: analytesResult[analyte] = { cRaw, cNet, concSolid, detectionZone: zone,
+      //              reportedValue, lodMethod, loqMethod, rpd: null, spikeRecovery: null, ccvRecovery: null }
+      // TODO [5]:  isi ccvRecovery / spikeRecovery / rpd sesuai sampleType (+ parent untuk spike/dup)
+      // TODO [5b]: soft-flag band (selectRecoveryBand / selectRpdBand) → push ke qcViolations
+      // TODO [4e]: setelah loop analit dalam selesai:
+      //   evaluatedSamples.push({ sampleId, sampleType, parentSampleId, weight, volume, df, analytes: analytesResult })
     }
   }
+
+  // Soft-flag: QC gagal tidak melempar — hanya status + daftar violation
   return {
+    analytesSummary,
+    evaluatedSamples,
+    qcViolations,
     qcStatus: qcViolations.length > 0 ? 'INVALID_QC' : 'PASSED',
-    qcViolations: qcViolations,
-    analytesSummary: analytesSummary,
-    evaluatedSamples: []
   }
 }
