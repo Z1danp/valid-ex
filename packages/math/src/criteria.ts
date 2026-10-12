@@ -1,6 +1,6 @@
 import type { AnalyteCriteria, QcCriteriaProfile, RecoveryBand, RpdBand } from './types';
 
-function validateRecoveryBands(bands: RecoveryBand[], analyte: string, qcType: string): void {
+function validateRecoveryBands(bands: RecoveryBand[], analyte: string, qcType: string, solutionConcUnit: string): void {
   for (let i = 0; i < bands.length; i++) {
     const band = bands[i];
     const isLast = i === bands.length - 1;
@@ -21,10 +21,21 @@ function validateRecoveryBands(bands: RecoveryBand[], analyte: string, qcType: s
     if (band?.minRecovery! >= band?.maxRecovery!) {
       throw new Error(`QcType '${qcType}' for analyte '${analyte}' has minRecovery >= maxRecovery at index ${i}`)
     }
+
+    // tolak band yang tidak diakhiri catch-all
+    if(band?.maxConc !== null && isLast) {
+      throw new Error(`QcType '${qcType}' for analyte '${analyte}' must end with a catch-all band (maxConc: null)`)
+    }
+
+    // tolak band berbatas finit tanpa solutionConcUnit
+    if (band?.maxConc !== null && !solutionConcUnit) {
+      throw new Error(`Profile contains finite band (maxConc: ${band?.maxConc}) but solutionConcUnit is not defined`)
+    }
+
   }
 }
 
-function validateRpdBands(bands: RpdBand[], analyte: string): void {
+function validateRpdBands(bands: RpdBand[], analyte: string, solutionConcUnit: string): void {
   for (let i = 0; i < bands.length; i++) {
     const band = bands[i];
     const isLast = i === bands.length - 1;
@@ -44,6 +55,11 @@ function validateRpdBands(bands: RpdBand[], analyte: string): void {
     // cek maxRpd > 0
     if (band?.maxRpd! <= 0) {
       throw new Error(`QcType 'Duplicate' for analyte '${analyte}' has maxRpd <= 0 at index ${i}`)
+    }
+
+    // tolak band berbatas finit tanpa solutionConcUnit
+    if (band?.maxConc !== null && !solutionConcUnit) {
+      throw new Error(`Profile contains finite band (maxConc: ${band?.maxConc}) but solutionConcUnit is not defined`)
     }
   }
 }
@@ -83,9 +99,10 @@ export function validateProfile(profile: QcCriteriaProfile): void {
       throw new Error(`Analyte '${analyte}' must have at least one duplicate band`)
     }
 
-    validateRecoveryBands(ccvBands, analyte, 'CCV');
-    validateRecoveryBands(spikeBands, analyte, 'Spike');
-    validateRpdBands(duplicateBands, analyte);
+    validateRecoveryBands(ccvBands, analyte, 'CCV', profile.solutionConcUnit!);
+    validateRecoveryBands(spikeBands, analyte, 'Spike', profile.solutionConcUnit!);
+    validateRpdBands(duplicateBands, analyte, profile.solutionConcUnit!);
+    
   }
 }
 
@@ -94,7 +111,10 @@ export function validateProfile(profile: QcCriteriaProfile): void {
  * di profil (tidak ada fallback implisit — keputusan ADR-0007).
  */
 export function resolveAnalyteCriteria(profile: QcCriteriaProfile, analyte: string): AnalyteCriteria {
-  throw new Error('Not implemented: resolveAnalyteCriteria');
+  if (!profile.analytes[analyte])  {
+    throw new Error(`Analyte '${analyte}' is not declared`)
+  }
+  return profile.analytes[analyte]!
 }
 
 /**
@@ -107,6 +127,14 @@ export function resolveAnalyteCriteria(profile: QcCriteriaProfile, analyte: stri
  * semua batas -> throw.
  */
 export function selectRecoveryBand(bands: RecoveryBand[], testValue: number): RecoveryBand {
+  if (bands.length < 1) {
+    throw new Error(`there is no band for testValue ${testValue}`)
+  }
+  for (const band of bands) {
+    if (band.maxConc === null || testValue < band.maxConc) {
+      return band
+    }
+  }
   throw new Error('Not implemented: selectRecoveryBand');
 }
 
@@ -114,5 +142,12 @@ export function selectRecoveryBand(bands: RecoveryBand[], testValue: number): Re
  * Sama seperti selectRecoveryBand, untuk band RPD.
  */
 export function selectRpdBand(bands: RpdBand[], testValue: number): RpdBand {
+  for(const band of bands) {
+    if (band.maxConc === null || testValue < band.maxConc) {
+      return band
+    } else if(band.maxConc === null) {
+      return band
+    }
+  }
   throw new Error('Not implemented: selectRpdBand');
 }
