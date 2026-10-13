@@ -10,6 +10,7 @@
   "scripts": {
     "test": "pnpm -r test",
     "test:math": "pnpm --filter @valid-ex/math test",
+    "test:db": "pnpm --filter @valid-ex/db test",
     "typecheck": "pnpm -r typecheck",
     "gen:contracts": "pnpm --filter @valid-ex/contracts gen"
   }
