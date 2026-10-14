@@ -3,78 +3,78 @@ name: explain-the-layer
 description: Explains the problem underneath code that was written, why each tool, construct, technique, and term fits, and the extreme input or state where that choice breaks. Use when the user asks to explain what was written, why a library or technique was chosen, to study the layer under the work, to find limits or failure edges, or says jelaskan, mengapa, alasan, lapisan di bawah, batas ekstrim, limitasi, rusak, or why this approach.
 ---
 
-# Lapisan di Bawah Pekerjaan
+# The Layer Under the Work
 
-Jelaskan keputusan yang mengubah desain, mulai dari masalah yang sudah ada sebelum kode itu ditulis. Pembacanya insinyur yang ingin bisa memprediksi keputusan serupa berikutnya.
+Explain the decisions that change the design, starting from the problem that existed before the code was written. The reader is an engineer who wants to predict the next similar decision.
 
-Tulis dalam bahasa Indonesia. Nama library, identifier, SQL, dan id invariant tetap dalam bentuk aslinya.
+Write the explanation in the language the user is using. Keep library names, identifiers, SQL, and invariant ids in their original form.
 
-## Kapan
+## When
 
-Pakai skill ini saat pengguna meminta penjelasan atas kode yang baru ditulis atau yang sedang ditunjuk: mengapa suatu alat, potongan kode, teknik, atau istilah dipakai.
+Use this skill when the user asks why a tool, construct, technique, or term was used in code just written or currently in front of them.
 
-Jangan dipakai untuk memburu bug di luar keputusan yang dibahas, mengulang diff, atau merangkum isi file.
+Do not use it to hunt bugs outside the decision being discussed, to restate the diff, or to summarize a file.
 
-Kalau pengguna menunjuk satu simbol, jelaskan lapisan simbol itu saja.
+When the user points at one symbol, explain only that symbol's layer.
 
-## Sebelum menulis
+## Before writing
 
-1. Baca kode yang ditunjuk. Bila repo memilikinya, baca juga `AGENTS.md`, ADR, dan kontrak yang keputusan itu mengikat.
-2. Kelompokkan perubahan menjadi keputusan. Satu keputusan adalah satu masalah yang, kalau dijawab lain, bentuk solusinya berubah.
-3. Lewati boilerplate yang tidak mengubah desain, kecuali pengguna menanyakannya.
+1. Read the code in question. When the repo has them, also read `AGENTS.md`, the ADR, and the contract that binds the decision.
+2. Group the change into decisions. One decision is one problem that would produce a different solution if answered differently.
+3. Skip boilerplate that does not change the design, unless the user asks about it.
 
-## Satu lapisan
+## One layer
 
-Turun satu lapisan di bawah pekerjaan. Berhenti saat pembaca bisa memprediksi keputusan yang mirip.
+Go one layer under the work. Stop when the reader could predict a similar decision.
 
-Kalau pengguna bertanya lagi, turun satu lapisan dari jawaban sebelumnya. Jangan loncat ke teori yang tidak mengubah keputusan ini.
+On a follow-up, go one layer under the previous answer. Do not jump to theory that would not change this decision.
 
-## Bentuk jawaban
+## Answer shape
 
-Buka dengan satu atau dua kalimat: masalah di bawah seluruh perubahan. Lalu tiap keputusan:
+Open with one or two sentences: the problem under the whole change. Then each decision:
 
-### [alat, kode, teknik, atau istilah]
+### [tool, construct, technique, or term]
 
-- **Masalah**: kegagalan yang tetap ada andaikan kode ini tidak ditulis. Sebut siapa yang kena. Bila repo mendefinisikannya, sebut id invariant atau ADR.
-- **Pilihan**: simbol, library, atau teknik, beserta path file.
-- **Kenapa pas**: sifat pilihan itu yang menutup masalah tadi, plus satu kejadian konkret yang sekarang tertolak.
-- **Rusak**: satu batas ekstrim, sesuai bagian di bawah.
-- **Batas**: apa yang keputusan ini sengaja belum selesaikan.
+- **Problem**: the failure that remains if this code does not exist. Name who is affected. When the repo defines it, name the invariant or ADR id.
+- **Choice**: the symbol, library, or technique, with its file path.
+- **Why it fits**: the property of this choice that closes the problem, plus one concrete event that is now rejected.
+- **Breaks**: one extreme edge, as defined below.
+- **Left open**: the work this decision deliberately does not finish.
 
-Istilah dijelaskan hanya sejauh ia menamai masalahnya, bukan sebagai entri glosarium.
+Explain a term only as far as it names the problem. Do not write a glossary entry.
 
-Sebut alternatif hanya bila pilihan itu wajar dan masih meninggalkan masalah terbuka. Yang disebut adalah masalah yang tetap terbuka.
+Mention another option only when that option is a reasonable one and still leaves the problem open. Name the problem that stays open.
 
-## Asumsikan rusak
+## Assume it breaks
 
-Untuk setiap keputusan, anggap pemakai, lapisan di atas, atau data akan membawa pilihan ini sampai jaminannya berhenti.
+For every decision, assume the caller, the layer above, or the data will push this choice until its guarantee stops.
 
-Batas ekstrim adalah input, state, atau urutan kejadian di titik itu. Pilih satu: yang paling mampu membatalkan keputusan. Jangan menghitung setiap cara sesuatu bisa gagal.
+The extreme edge is the input, state, or sequence at that point. Pick one: the edge most able to invalidate the decision. Do not list every way it can fail.
 
-Untuk kode yang sudah ada, sebut apa yang terjadi di batas itu: ditolak, tersimpan dalam keadaan rusak, atau dibiarkan. Tunjuk file atau tes. Perilaku yang tidak terlihat dari kode disebut belum ditetapkan.
+For code that already exists, say what happens at that edge: rejected, stored in a broken state, or allowed through. Point at the file or test. Behavior that is not visible in the code is not established.
 
-Untuk konsep yang belum diimplementasikan, batas ekstrim adalah tekanan yang masih terbuka. Jangan mengklaim kode sudah menolaknya.
+For a concept that is not implemented yet, the extreme edge is pressure that is still open. Do not claim the code already rejects it.
 
-**Batas** adalah pekerjaan yang sengaja ditunda. **Rusak** adalah tepi tempat jaminan berhenti.
+**Left open** is work deliberately deferred. **Breaks** is the edge where the guarantee stops.
 
-## Jangkar
+## Anchor
 
-Setiap klaim menempel pada kode, tes, invariant, atau ADR yang ada. Jangan mengarang alasan yang tidak dijalankan kode. Kalau kode dan dokumen tidak sejalan, sebutkan keduanya.
+Attach every claim to code, a test, an invariant, or an ADR that exists. Do not invent a reason the code does not carry out. When the code and the docs disagree, say both.
 
-## Contoh bentuk jawaban
+## Sample answer
 
-### WebSocket `Pool` `@neondatabase/serverless`
+### WebSocket `Pool` from `@neondatabase/serverless`
 
-- **Masalah**: batch kalibrasi dan audit log-nya harus commit atau rollback bersama (Invariant T6). Di serverless, koneksi TCP langsung ke Postgres kehabisan slot saat banyak instance bangkit bersamaan (Invariant T4).
-- **Pilihan**: `createDb` di `packages/db/src/client.ts` memakai `Pool` WebSocket ke host yang mengandung `-pooler`.
-- **Kenapa pas**: pooler memegang transaksi interaktif, jadi dua `INSERT` punya satu batas commit. Query lewat driver HTTP selesai dalam satu request, sehingga kedua insert itu tidak berbagi transaksi dan T6 tetap terbuka.
-- **Rusak**: `DATABASE_URL` tanpa `-pooler` tetap diterima `createDb`. `Pool` membuka koneksi langsung, dan kehabisan slot TCP yang T4 cegah tidak ditolak di kode.
-- **Batas**: pilihan driver belum menentukan isi tabel, dan belum membuka route Hono.
+- **Problem**: a calibration batch and its audit log must commit or roll back together (Invariant T6). On serverless, a direct TCP connection to Postgres exhausts connection slots when many instances start at once (Invariant T4).
+- **Choice**: `createDb` in `packages/db/src/client.ts` uses a WebSocket `Pool` against a host that contains `-pooler`.
+- **Why it fits**: the pooler holds an interactive transaction, so two `INSERT`s share one commit boundary. A query through the HTTP driver finishes in a single request, so those two inserts do not share a transaction and T6 stays open.
+- **Breaks**: a `DATABASE_URL` without `-pooler` is still accepted by `createDb`. The `Pool` opens a direct connection, and the code does not reject the TCP-slot exhaustion T4 exists to prevent.
+- **Left open**: the driver choice does not define the tables, and it does not add the Hono routes.
 
-## Yang tidak dilakukan
+## Do not
 
-- Mengulang diff baris demi baris.
-- Memuji pilihan.
-- Menjelaskan sintaks yang sudah terlihat dari kode.
-- Menurunkan seluruh lapisan sampai ke sistem operasi dalam satu jawaban.
-- Menghitung setiap cara sesuatu bisa gagal. Satu batas ekstrim per keputusan.
+- Restate the diff line by line.
+- Praise the choice.
+- Explain syntax that is already visible in the code.
+- Descend every layer down to the operating system in one answer.
+- List every way something can fail. One extreme edge per decision.
