@@ -114,7 +114,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/calibrations/{id}/export": {
+    "/calibrations/{id}/samples/{sampleRowId}/export": {
         parameters: {
             query?: never;
             header?: never;
@@ -122,11 +122,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Mengunduh lembar kerja spreadsheet audit trail (.xlsx)
-         * @description Menghasilkan file Excel biner (.xlsx) berisi formula native Excel (=SLOPE, =INTERCEPT, =IF)
-         *     dan tabel terstruktur. Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
+         * Mengunduh spreadsheet audit trail satu sampel (.xlsx)
+         * @description Satu file untuk satu baris sampel (ADR-0008). Berisi formula native Excel
+         *     (=SLOPE, =INTERCEPT, =IF) untuk sampel itu, kurva batch, baris blanko metode,
+         *     dan baris induk bila sampelnya spike atau duplo. Sampel lain di batch tidak ikut.
+         *     Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
          */
-        get: operations["exportCalibrationExcel"];
+        get: operations["exportSampleRowExcel"];
         put?: never;
         post?: never;
         delete?: never;
@@ -443,10 +445,15 @@ export interface components {
         };
         SampleRowInput: {
             /**
-             * @description ID atau label sampel
+             * @description Label baris di dalam batch. Spike dan duplo menunjuk induk lewat label ini.
              * @example 1111 (1)
              */
             sampleId: string;
+            /**
+             * @description ID lab opsional. Boleh dikosongkan (kunci dihilangkan atau null), termasuk pada blanko dan CCV. Bukan label baris. Tidak dibaca @valid-ex/math dan tidak diwariskan ke duplo.
+             * @example 291843
+             */
+            labSampleId?: string | null;
             sampleType: components["schemas"]["SampleType"];
             /**
              * @description ID sampel acuan (wajib untuk sampleType: duplicate dan spike)
@@ -606,8 +613,19 @@ export interface components {
             ccvRecovery?: number | null;
         };
         EvaluatedSampleRow: {
+            /**
+             * Format: uuid
+             * @description Kunci primer baris sample_rows. Path ekspor memakai nilai ini sebagai sampleRowId.
+             * @example d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70
+             */
+            id: string;
             /** @example 1111 (1) */
             sampleId: string;
+            /**
+             * @description ID lab yang tersimpan. Null bila kolom dikosongkan.
+             * @example 291843
+             */
+            labSampleId?: string | null;
             sampleType: components["schemas"]["SampleType"];
             /** @example null */
             parentSampleId?: string | null;
@@ -728,6 +746,8 @@ export interface components {
     parameters: {
         /** @description UUID unik batch kalibrasi */
         CalibrationIdParam: string;
+        /** @description UUID baris sample_rows yang diekspor. Bukan label sampleId dan bukan labSampleId. */
+        SampleRowIdParam: string;
         /** @description UUID unik profil kriteria QC */
         QcProfileIdParam: string;
     };
@@ -976,13 +996,15 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
         };
     };
-    exportCalibrationExcel: {
+    exportSampleRowExcel: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description UUID unik batch kalibrasi */
                 id: components["parameters"]["CalibrationIdParam"];
+                /** @description UUID baris sample_rows yang diekspor. Bukan label sampleId dan bukan labSampleId. */
+                sampleRowId: components["parameters"]["SampleRowIdParam"];
             };
             cookie?: never;
         };

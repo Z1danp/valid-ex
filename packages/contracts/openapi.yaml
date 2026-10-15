@@ -243,18 +243,21 @@ paths:
   # =========================================================================
   # REPORT & SPREADSHEET EXPORT DOMAIN
   # =========================================================================
-  /calibrations/{id}/export:
+  /calibrations/{id}/samples/{sampleRowId}/export:
     get:
       tags: [Reports]
-      summary: Mengunduh lembar kerja spreadsheet audit trail (.xlsx)
+      summary: Mengunduh spreadsheet audit trail satu sampel (.xlsx)
       description: |
-        Menghasilkan file Excel biner (.xlsx) berisi formula native Excel (=SLOPE, =INTERCEPT, =IF)
-        dan tabel terstruktur. Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
-      operationId: exportCalibrationExcel
+        Satu file untuk satu baris sampel (ADR-0008). Berisi formula native Excel
+        (=SLOPE, =INTERCEPT, =IF) untuk sampel itu, kurva batch, baris blanko metode,
+        dan baris induk bila sampelnya spike atau duplo. Sampel lain di batch tidak ikut.
+        Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
+      operationId: exportSampleRowExcel
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/CalibrationIdParam'
+        - $ref: '#/components/parameters/SampleRowIdParam'
       responses:
         '200':
           description: File spreadsheet binary hasil olah data (.xlsx)
@@ -366,6 +369,15 @@ components:
         type: string
         format: uuid
         example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+    SampleRowIdParam:
+      name: sampleRowId
+      in: path
+      required: true
+      description: UUID baris sample_rows yang diekspor. Bukan label sampleId dan bukan labSampleId.
+      schema:
+        type: string
+        format: uuid
+        example: "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70"
     QcProfileIdParam:
       name: id
       in: path
@@ -764,8 +776,13 @@ components:
       properties:
         sampleId:
           type: string
-          description: "ID atau label sampel"
+          description: "Label baris di dalam batch. Spike dan duplo menunjuk induk lewat label ini."
           example: "1111 (1)"
+        labSampleId:
+          type: string
+          nullable: true
+          description: "ID lab opsional. Boleh dikosongkan (kunci dihilangkan atau null), termasuk pada blanko dan CCV. Bukan label baris. Tidak dibaca @valid-ex/math dan tidak diwariskan ke duplo."
+          example: "291843"
         sampleType:
           $ref: '#/components/schemas/SampleType'
         parentSampleId:
@@ -940,11 +957,21 @@ components:
 
     EvaluatedSampleRow:
       type: object
-      required: [sampleId, sampleType, weight, volume, df, analytes]
+      required: [id, sampleId, sampleType, weight, volume, df, analytes]
       properties:
+        id:
+          type: string
+          format: uuid
+          description: "Kunci primer baris sample_rows. Path ekspor memakai nilai ini sebagai sampleRowId."
+          example: "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70"
         sampleId:
           type: string
           example: "1111 (1)"
+        labSampleId:
+          type: string
+          nullable: true
+          description: "ID lab yang tersimpan. Null bila kolom dikosongkan."
+          example: "291843"
         sampleType:
           $ref: '#/components/schemas/SampleType'
         parentSampleId:
