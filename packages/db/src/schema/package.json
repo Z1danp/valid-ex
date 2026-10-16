@@ -1,0 +1,12 @@
+{
+    "name": "@valid-ex/db",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/schema/index.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    }
+}

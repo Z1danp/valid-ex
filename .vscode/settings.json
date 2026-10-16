@@ -1,3 +1,4 @@
 {
-    "antigravity.enableInlineDiff": true
+    "antigravity.enableInlineDiff": true,
+    "json.schemaDownload.enable": true
 }
