@@ -80,7 +80,8 @@ export async function persistCalibrationBatch(db: TransactionHost, input: Calibr
                 sampleCount: sampleRowsInputs?.length,
             }
         }).returning({id: auditLogs.id})
-        if (!auditLog) {
+        const audit = auditLog[0];
+        if (!audit) {
             throw new Error('Failed to insert audit log');
         }
         return {
