@@ -7,7 +7,11 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test:watch": "vitest",
+        "test": "vitest run",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "drizzle-kit migrate"
     },
     "dependencies": {
         "@neondatabase/serverless": "^1.2.0",
