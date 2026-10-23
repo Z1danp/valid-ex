@@ -1,0 +1,26 @@
+{
+  "name": "@valid-ex/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Valid-Ex Hono API Gateway (Vercel Serverless Node.js)",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@valid-ex/contracts": "workspace:*",
+    "@valid-ex/db": "workspace:*",
+    "@valid-ex/math": "workspace:*",
+    "exceljs": "^4.4.0",
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.5"
+  }
+}
