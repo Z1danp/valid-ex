@@ -78,11 +78,27 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
     // TODO (Stage 4B Green - /register):
     // a) Cek apakah user dengan `normalizedEmail` sudah ada di `deps.db.select().from(users).where(eq(users.email, normalizedEmail))`
     //    Jika sudah ada -> return c.json({ code: 'EMAIL_EXISTS', message: 'Email sudah terdaftar.' }, 409)
+    const existing = await deps.db.select().from(users).where(eq(users.email, normalizedEmail));
+    if (existing.length > 0) {
+      return c.json({code: 'EMAIL_EXISTS', message: "Email already exists"}, 409)
+    } 
     // b) Hash password dengan `hashPassword(body.password)`
+    const passwordHash = hashPassword(body.password)
     // c) Insert ke tabel `users` (`email: normalizedEmail`, `name: body.name`, `passwordHash`, `authProvider: 'local'`) menggunakan `.returning()`
+    const insertedUser = await deps.db.insert(users).values({
+      email: normalizedEmail,
+      name: body.name,
+      passwordHash: passwordHash,
+      authProvider: 'local',
+    }).returning()
+    const user = insertedUser[0]
     // d) Buat JWT token dengan `await issueToken(insertedUser)`
+    if (!user) {
+      return c.json({code: 'INTERNAL_SERVER_ERROR', message: "Failed to insert user"}, 500)
+    }
+    const token = await issueToken(user)
     // e) Return 201 JSON: `{ accessToken, tokenType: 'Bearer', user: toUserProfile(insertedUser) }`
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    return c.json({ accessToken: token, tokenType: 'Bearer', user: toUserProfile(user) }, 201);
   });
 
   // 2. POST /login
