@@ -11,8 +11,8 @@ export function requireAuth(jwtSecret: string) {
   return async (c: Context<{ Variables: AuthVariables }>, next: Next) => {
     // get auth header
     const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer')) {
-      return c.json({ code: 'UNAUTHORIZE', message: 'Authentication token not found'}, 401);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ code: 'UNAUTHORIZED', message: 'Authentication token not found'}, 401);
     }
 
     // get token from auth header
