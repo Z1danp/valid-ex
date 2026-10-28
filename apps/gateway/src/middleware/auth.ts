@@ -1,5 +1,8 @@
 import type { Context, Next } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { verify } from 'hono/jwt';
+
+export const AUTH_COOKIE_NAME = 'valid_ex_token';
 
 export type AuthVariables = {
   userId: string;
@@ -9,14 +12,12 @@ export type AuthVariables = {
 
 export function requireAuth(jwtSecret: string) {
   return async (c: Context<{ Variables: AuthVariables }>, next: Next) => {
-    // get auth header
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    // get token from cookie
+    const token = getCookie(c, AUTH_COOKIE_NAME);
+    if (!token) {
       return c.json({ code: 'UNAUTHORIZED', message: 'Authentication token not found'}, 401);
     }
-
-    // get token from auth header
-    const token = authHeader.slice(7);
     try {
       // get payload from token
       const payload = await verify(token, jwtSecret, 'HS256');

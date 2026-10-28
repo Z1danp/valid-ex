@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keluar dari sesi aktif dengan menghapus HttpOnly Cookie `valid_ex_token` */
+        post: operations["logoutUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -221,11 +238,11 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /**
+         * @description Response autentikasi (ADR-0009). Token JWT dikirim melalui header `Set-Cookie`
+         *     (`valid_ex_token`, `HttpOnly`, `SameSite=Lax`) sehingga tidak terekspos ke JavaScript klien.
+         */
         AuthResponse: {
-            /** @description JWT Access Token */
-            accessToken: string;
-            /** @default Bearer */
-            tokenType: string;
             user: components["schemas"]["UserProfile"];
         };
         /**
@@ -770,9 +787,10 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Pengguna berhasil didaftarkan */
+            /** @description Pengguna berhasil didaftarkan (JWT disematkan pada HttpOnly Cookie `valid_ex_token`) */
             201: {
                 headers: {
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -804,9 +822,10 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Login berhasil, mengembalikan JWT token */
+            /** @description Login berhasil (JWT disematkan pada HttpOnly Cookie `valid_ex_token`) */
             200: {
                 headers: {
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -846,9 +865,10 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Autentikasi Google berhasil */
+            /** @description Autentikasi Google berhasil (JWT disematkan pada HttpOnly Cookie `valid_ex_token`) */
             200: {
                 headers: {
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -863,6 +883,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
+            };
+        };
+    };
+    logoutUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sesi berhasil dihapus (Set-Cookie mengosongkan `valid_ex_token`) */
+            204: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

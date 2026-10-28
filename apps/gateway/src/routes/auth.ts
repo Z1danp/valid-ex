@@ -1,11 +1,12 @@
 import { eq } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { deleteCookie, setCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
 import { z } from 'zod';
 import type { components } from '@valid-ex/contracts';
 import { users, type Database } from '@valid-ex/db';
 import { hashPassword, verifyPassword } from '../lib/crypto';
-import { requireAuth, type AuthVariables } from '../middleware/auth';
+import { AUTH_COOKIE_NAME, requireAuth, type AuthVariables } from '../middleware/auth';
 import { validateContract } from '../middleware/validate';
 
 export type GoogleTokenPayload = {
@@ -70,6 +71,16 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
     );
   }
 
+  function setAuthCookie(c: Context, token: string): void {
+    setCookie(c, AUTH_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    });
+  }
+
   // 1. POST /register
   auth.post('/register', validateContract('json', RegisterSchema), async (c) => {
     const body = c.req.valid('json');
@@ -97,8 +108,9 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
       return c.json({code: 'INTERNAL_SERVER_ERROR', message: "Failed to insert user"}, 500)
     }
     const token = await issueToken(user)
+    setAuthCookie(c, token)
     // e) Return 201 JSON: `{ accessToken, tokenType: 'Bearer', user: toUserProfile(insertedUser) }`
-    return c.json({ accessToken: token, tokenType: 'Bearer', user: toUserProfile(user) }, 201);
+    return c.json({ user: toUserProfile(user) }, 201);
   });
 
   // 2. POST /login
@@ -108,13 +120,27 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
 
     // TODO (Stage 4B Green - /login):
     // a) Cari user berdasarkan `normalizedEmail`
+    const userResult = await deps.db.select().from(users).where(eq(users.email, normalizedEmail));
+    const user = userResult[0]
     // b) Jika user tidak ditemukan -> return c.json({ code: 'INVALID_CREDENTIALS', message: 'Email atau password salah.' }, 401)
+    if (!user) {
+      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401)
+    }
     // c) Invariant T5 Guard: Jika `user.authProvider !== 'local' || !user.passwordHash`
+    if(user.authProvider !== 'local' || !user.passwordHash) {
+      return c.json({ code: 'OAUTH_ACCOUNT_ONLY', message: 'This account is registered via Google OAuth.' }, 400)
+    }
     //    -> return c.json({ code: 'OAUTH_ACCOUNT_ONLY', message: 'Akun ini terdaftar via Google OAuth.' }, 400)
     // d) Verifikasi password dengan `verifyPassword(body.password, user.passwordHash)`
+    const isPasswordValid = verifyPassword(body.password, user.passwordHash)
+    if (!isPasswordValid) {
+      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401)
+    }
     //    Jika false -> return c.json({ code: 'INVALID_CREDENTIALS', message: 'Email atau password salah.' }, 401)
-    // e) Buat JWT token dengan `await issueToken(user)` dan return 200 JSON `{ accessToken, tokenType: 'Bearer', user: toUserProfile(user) }`
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    // e) Buat JWT token dengan `await issueToken(user)` dan return 200 JSON `{ toUserProfile(user) }`
+    const token = await issueToken(user)
+    setAuthCookie(c, token)
+    return c.json({ user: toUserProfile(user) }, 200);
   });
 
   // 3. POST /google
@@ -159,17 +185,22 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
     }
 
     const accessToken = await issueToken(user);
+    setAuthCookie(c, accessToken);
     return c.json(
       {
-        accessToken,
-        tokenType: 'Bearer',
         user: toUserProfile(user),
       },
       200,
     );
   });
 
-  // 4. GET /me (Protected by requireAuth middleware)
+  // 4. POST /logout (ADR-0009: Hapus HttpOnly Cookie)
+  auth.post('/logout', (c) => {
+    deleteCookie(c, AUTH_COOKIE_NAME, { path: '/' });
+    return c.body(null, 204);
+  });
+
+  // 5. GET /me (Protected by requireAuth middleware)
   auth.get('/me', requireAuth(deps.jwtSecret), async (c) => {
     // TODO (Stage 4B Green - /me):
     // a) Ambil `userId` dari context yang sudah diset oleh middleware: `const userId = c.get('userId')`

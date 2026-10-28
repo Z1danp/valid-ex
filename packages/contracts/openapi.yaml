@@ -40,7 +40,12 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: Pengguna berhasil didaftarkan
+          description: Pengguna berhasil didaftarkan (JWT disematkan pada HttpOnly Cookie `valid_ex_token`)
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "valid_ex_token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400"
           content:
             application/json:
               schema:
@@ -67,7 +72,12 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Login berhasil, mengembalikan JWT token
+          description: Login berhasil (JWT disematkan pada HttpOnly Cookie `valid_ex_token`)
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "valid_ex_token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400"
           content:
             application/json:
               schema:
@@ -98,7 +108,12 @@ paths:
               $ref: '#/components/schemas/GoogleAuthRequest'
       responses:
         '200':
-          description: Autentikasi Google berhasil
+          description: Autentikasi Google berhasil (JWT disematkan pada HttpOnly Cookie `valid_ex_token`)
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "valid_ex_token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400"
           content:
             application/json:
               schema:
@@ -110,13 +125,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Keluar dari sesi aktif dengan menghapus HttpOnly Cookie `valid_ex_token`
+      operationId: logoutUser
+      responses:
+        '204':
+          description: Sesi berhasil dihapus (Set-Cookie mengosongkan `valid_ex_token`)
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "valid_ex_token=; Path=/; Max-Age=0"
+
   /auth/me:
     get:
       tags: [Auth]
       summary: Mengambil profil pengguna yang sedang login
       operationId: getCurrentUser
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       responses:
         '200':
           description: Profil pengguna berhasil diambil
@@ -141,7 +170,7 @@ paths:
         Sesuai Invariant D4 & ADR-0005, jika QC gagal, data tetap disimpan dengan status INVALID_QC (Soft-Flag).
       operationId: createCalibrationBatch
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       requestBody:
         required: true
         content:
@@ -171,7 +200,7 @@ paths:
       summary: Mengambil daftar riwayat batch kalibrasi pengguna
       operationId: listCalibrationBatches
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       parameters:
         - name: page
           in: query
@@ -209,7 +238,7 @@ paths:
       summary: Mengambil detail lengkap 1 batch pengujian dan hasil kuantifikasinya
       operationId: getCalibrationBatchById
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       parameters:
         - $ref: '#/components/parameters/CalibrationIdParam'
       responses:
@@ -229,7 +258,7 @@ paths:
       summary: Menghapus batch kalibrasi
       operationId: deleteCalibrationBatch
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       parameters:
         - $ref: '#/components/parameters/CalibrationIdParam'
       responses:
@@ -254,7 +283,7 @@ paths:
         Semua string pengguna disanitasi dari formula injection (Anti-CWE-1236).
       operationId: exportSampleRowExcel
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       parameters:
         - $ref: '#/components/parameters/CalibrationIdParam'
         - $ref: '#/components/parameters/SampleRowIdParam'
@@ -285,7 +314,7 @@ paths:
       summary: Mengambil daftar profil kriteria QC milik pengguna
       operationId: listQcProfiles
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       responses:
         '200':
           description: Daftar profil berhasil diambil
@@ -303,7 +332,7 @@ paths:
       summary: Membuat profil kriteria QC baru (versi berikutnya bila nama sama)
       operationId: createQcProfile
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       requestBody:
         required: true
         content:
@@ -334,7 +363,7 @@ paths:
       summary: Mengambil satu profil kriteria QC (versi terbaru)
       operationId: getQcProfileById
       security:
-        - BearerAuth: []
+        - CookieAuth: []
       parameters:
         - $ref: '#/components/parameters/QcProfileIdParam'
       responses:
@@ -354,10 +383,11 @@ paths:
 # ===========================================================================
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: valid_ex_token
+      description: Stateless JWT yang disimpan di dalam HttpOnly Cookie (ADR-0009)
 
   parameters:
     CalibrationIdParam:
@@ -476,14 +506,11 @@ components:
 
     AuthResponse:
       type: object
-      required: [accessToken, user]
+      required: [user]
+      description: |
+        Response autentikasi (ADR-0009). Token JWT dikirim melalui header `Set-Cookie`
+        (`valid_ex_token`, `HttpOnly`, `SameSite=Lax`) sehingga tidak terekspos ke JavaScript klien.
       properties:
-        accessToken:
-          type: string
-          description: JWT Access Token
-        tokenType:
-          type: string
-          default: "Bearer"
         user:
           $ref: '#/components/schemas/UserProfile'
 

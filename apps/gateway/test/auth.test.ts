@@ -6,7 +6,12 @@ import { createTestDb } from './helpers/test-db';
 
 const TEST_JWT_SECRET = 'test-super-secret-jwt-key-for-vitest';
 
-describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
+function extractCookiePair(setCookieHeader: string | null): string {
+  if (!setCookieHeader) return '';
+  return setCookieHeader.split(';')[0] ?? '';
+}
+
+describe('Stage 4B: Authentication & HttpOnly Cookie JWT Middleware (/api/v1/auth/*)', () => {
   let db: Database;
   let client: PGlite;
   let app: ReturnType<typeof createApp>;
@@ -36,7 +41,7 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
     await client.close();
   });
 
-  it('POST /api/v1/auth/register creates a local user (lowercased email), hashes password, and returns 201 with JWT', async () => {
+  it('POST /api/v1/auth/register creates a local user, sets HttpOnly Cookie valid_ex_token, and returns 201 { user }', async () => {
     const res = await app.request('/api/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,10 +53,14 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
     });
 
     expect(res.status).toBe(201);
+
+    const setCookie = res.headers.get('set-cookie');
+    expect(setCookie).toContain('valid_ex_token=');
+    expect(setCookie).toContain('HttpOnly');
+    expect(setCookie).toContain('Path=/');
+
     const body = await res.json();
     expect(body).toEqual({
-      accessToken: expect.any(String),
-      tokenType: 'Bearer',
       user: {
         id: expect.any(String),
         email: 'analis@lab.com',
@@ -61,7 +70,7 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
         createdAt: expect.any(String),
       },
     });
-    // Ensure passwordHash is NEVER leaked in response
+    expect(body.accessToken).toBeUndefined();
     expect(body.user.passwordHash).toBeUndefined();
   });
 
@@ -107,7 +116,7 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
     expect(body.code).toBe('VALIDATION_ERROR');
   });
 
-  it('POST /api/v1/auth/login authenticates valid local user (200) and rejects wrong password (401)', async () => {
+  it('POST /api/v1/auth/login authenticates valid local user (200 + HttpOnly Cookie) and rejects wrong password (401)', async () => {
     await app.request('/api/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,8 +136,8 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
       }),
     });
     expect(okRes.status).toBe(200);
-    const okBody = await okRes.json();
-    expect(okBody.accessToken).toEqual(expect.any(String));
+    expect(okRes.headers.get('set-cookie')).toContain('valid_ex_token=');
+    expect(okRes.headers.get('set-cookie')).toContain('HttpOnly');
 
     const badRes = await app.request('/api/v1/auth/login', {
       method: 'POST',
@@ -141,18 +150,18 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
     expect(badRes.status).toBe(401);
   });
 
-  it('POST /api/v1/auth/google signs in OAuth user (200) and blocks manual password login with 400 (Invariant T5)', async () => {
+  it('POST /api/v1/auth/google signs in OAuth user (200 + Cookie) and blocks manual password login with 400 (Invariant T5)', async () => {
     const googleRes = await app.request('/api/v1/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken: 'valid-google-token-zidan' }),
     });
     expect(googleRes.status).toBe(200);
+    expect(googleRes.headers.get('set-cookie')).toContain('valid_ex_token=');
     const googleBody = await googleRes.json();
     expect(googleBody.user.email).toBe('googleuser@lab.com');
     expect(googleBody.user.authProvider).toBe('google');
 
-    // Now try logging in with password using that Google account's email -> MUST be 400 per openapi.yaml & Invariant T5
     const manualLoginRes = await app.request('/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -166,7 +175,7 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
     expect(errBody.code).toBe('OAUTH_ACCOUNT_ONLY');
   });
 
-  it('GET /api/v1/auth/me returns 200 UserProfile with valid Bearer token and 401 when missing/invalid', async () => {
+  it('GET /api/v1/auth/me reads HttpOnly Cookie valid_ex_token (200) and POST /api/v1/auth/logout clears it (204)', async () => {
     const regRes = await app.request('/api/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -176,10 +185,10 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
         name: 'Zidan Analis',
       }),
     });
-    const { accessToken } = await regRes.json();
+    const cookieHeader = extractCookiePair(regRes.headers.get('set-cookie'));
 
     const meRes = await app.request('/api/v1/auth/me', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Cookie: cookieHeader },
     });
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json();
@@ -188,5 +197,12 @@ describe('Stage 4B: Authentication & JWT Middleware (/api/v1/auth/*)', () => {
 
     const unauthRes = await app.request('/api/v1/auth/me');
     expect(unauthRes.status).toBe(401);
+
+    const logoutRes = await app.request('/api/v1/auth/logout', {
+      method: 'POST',
+      headers: { Cookie: cookieHeader },
+    });
+    expect(logoutRes.status).toBe(204);
+    expect(logoutRes.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 });
