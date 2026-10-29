@@ -7,7 +7,7 @@ import * as schema from '@valid-ex/db';
 import type { Database } from '@valid-ex/db';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = resolve(__dirname, '../../../packages/db/drizzle');
+const MIGRATIONS_DIR = resolve(__dirname, '../../../../packages/db/drizzle');
 
 export async function createTestDb(): Promise<{ db: Database; client: PGlite }> {
   const client = new PGlite();
