@@ -6,7 +6,8 @@
   "description": "Valid-Ex Hono API Gateway (Vercel Serverless Node.js)",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
