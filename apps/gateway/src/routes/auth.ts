@@ -204,10 +204,16 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
   auth.get('/me', requireAuth(deps.jwtSecret), async (c) => {
     // TODO (Stage 4B Green - /me):
     // a) Ambil `userId` dari context yang sudah diset oleh middleware: `const userId = c.get('userId')`
+    const userId = c.get('userId') as string
     // b) Query user dari database `deps.db.select().from(users).where(eq(users.id, userId))`
+    const userResult = await deps.db.select().from(users).where(eq(users.id, userId));
+    const user = userResult[0]
     // c) Jika tidak ditemukan -> return 401 JSON `{ code: 'UNAUTHORIZED', message: 'Pengguna tidak ditemukan.' }`
+    if (!user) {
+      return c.json({ code: 'UNAUTHORIZED', message: 'User not found.' }, 401)
+    }
     // d) Jika ditemukan -> return 200 JSON `toUserProfile(user)`
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    return c.json(toUserProfile(user), 200);
   });
 
   return auth;
