@@ -1,5 +1,5 @@
 import type { AnalyteCriteria, CalibrationInput, AnalyteSampleResult, CalibrationOutput, CurveMetrics, Point, QCStatus, QCViolation, EvaluatedSampleRow } from './types';
-import { selectRecoveryBand ,resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linearRegression, instrumentDetectionLimits, inverseConcentration, classifyZone, toSolidConcentration, formatReportedValue, ccvRecovery, spikeRecovery, relativePercentDifference, type SolidConversionParams, selectRpdBand } from './index'
+import { selectRecoveryBand, resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linearRegression, instrumentDetectionLimits, inverseConcentration, classifyZone, toSolidConcentration, formatReportedValue, ccvRecovery, spikeRecovery, relativePercentDifference, type SolidConversionParams, selectRpdBand } from './index'
 
 /**
  * Orkestrator utama (ADR-0003: isomorphic zero-drift).
@@ -147,15 +147,15 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
     // TODO [4f]: analytesSummary[analyte] = analyteContext[analyte].metrics
     analytesSummary[analyte] = analyteContext[analyte].metrics
   }
- // =========================================================================
-    // PASS 2: SAMPLE EVALUATION — WIP (masih di dalam loop analit → perlu dipindah)
-    // Alur yang sudah kamu tulis: reading → cRaw → cNet → zone → lod/loqMethod → concSolid
-    // Semua angka ini nanti masuk ke evaluatedSamples[].analytes[analyte] (AnalyteSampleResult)
-    // =========================================================================
-    for (const sample of input.samples) {
-      const analytesResult: Record<string, AnalyteSampleResult> = {};
+  // =========================================================================
+  // PASS 2: SAMPLE EVALUATION — WIP (masih di dalam loop analit → perlu dipindah)
+  // Alur yang sudah kamu tulis: reading → cRaw → cNet → zone → lod/loqMethod → concSolid
+  // Semua angka ini nanti masuk ke evaluatedSamples[].analytes[analyte] (AnalyteSampleResult)
+  // =========================================================================
+  for (const sample of input.samples) {
+    const analytesResult: Record<string, AnalyteSampleResult> = {};
 
-      for (const analyte of input.analytes) {
+    for (const analyte of input.analytes) {
       const criteria = analyteContext[analyte]!.criteria;
       const reading = sample.readings[analyte]
       if (reading === undefined || reading === null) {
@@ -188,7 +188,7 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
       const concSolid = zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null
 
       // TODO [4c]: reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit })
-      const reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit: conversionParams.solidResultUnit})
+      const reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit: conversionParams.solidResultUnit })
       // TODO [4d]: analytesResult[analyte] = { cRaw, cNet, concSolid, detectionZone: zone,
       //              reportedValue, lodMethod, loqMethod, rpd: null, spikeRecovery: null, ccvRecovery: null }
       analytesResult[analyte] = {
@@ -235,7 +235,7 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         }
 
       }
-      
+
       // search parentSample
       const parentSample = input.samples.find((s) => s.sampleId === sample.parentSampleId)
       // spikeRecovery
@@ -294,9 +294,9 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
       }
       // TODO [5b]: soft-flag band (selectRecoveryBand / selectRpdBand) → push ke qcViolations
       // soft-flag band ccvRecovery
-      // TODO [4e]: setelah loop analit dalam selesai:
-      evaluatedSamples.push({ sampleId: sample.sampleId ?? null, sampleType: sample.sampleType, parentSampleId: sample.parentSampleId ?? null, weight: sample.weight, volume: sample.volume, df: sample.df, analytes: analytesResult })
+      // TODO [4e]: setelah loop analit dalam selesai
     }
+    evaluatedSamples.push({ sampleId: sample.sampleId ?? null, sampleType: sample.sampleType, parentSampleId: sample.parentSampleId ?? null, weight: sample.weight, volume: sample.volume, df: sample.df, analytes: analytesResult })
   }
   // Soft-flag: QC gagal tidak melempar — hanya status + daftar violation
   return {
