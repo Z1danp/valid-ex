@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Database } from '@valid-ex/db';
 import { createAuthRoutes, type GoogleTokenPayload } from './routes/auth';
+import { createCalibrationRoutes } from './routes/calibrations';
+import { createQcProfileRoutes } from './routes/qc-profiles';
 
 export type AppDeps = {
   db?: Database;
@@ -24,6 +26,20 @@ export function createApp(deps: AppDeps = {}) {
         db: deps.db,
         jwtSecret,
         verifyGoogleToken: deps.verifyGoogleToken,
+      }),
+    );
+    app.route(
+      '/qc-profiles',
+      createQcProfileRoutes({
+        db: deps.db,
+        jwtSecret,
+      }),
+    );
+    app.route(
+      '/calibrations',
+      createCalibrationRoutes({
+        db: deps.db,
+        jwtSecret,
       }),
     );
   }
