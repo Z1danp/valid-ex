@@ -13,6 +13,7 @@ import {
 import { evaluateCalibration } from '@valid-ex/math';
 import { requireAuth, type AuthVariables } from '../middleware/auth';
 import { validateContract } from '../middleware/validate';
+import { generateSampleAuditWorkbook } from '../lib/excel';
 import { toQcProfileDto } from './qc-profiles';
 
 export type CalibrationRouteDeps = {
@@ -136,8 +137,9 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     // TODO (Stage 4C Green - POST /calibrations):
     // b) Jalankan `evaluateCalibration({ inputMode: body.inputMode, units: body.units, analytes: body.analytes, standards: body.standards, samples: body.samples, qcProfile })`
     //    di dalam blok `try { ... } catch (err) { ... }`.
+    let evaluated:ReturnType<typeof evaluateCalibration>;
     try {
-      const evaluated = evaluateCalibration({ 
+      evaluated = evaluateCalibration({ 
         inputMode: body.inputMode, 
         units: body.units, 
         analytes: body.analytes, 
@@ -147,6 +149,9 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
         instrument: body.instrument, 
         title: body.title
       })
+    } catch (err) {
+      return c.json({code: 'METROLOGY_ERROR', message: (err as Error).message}, 422)
+    }
       // c) Petakan `body.samples` + `evaluated.evaluatedSamples` menjadi `sampleRows` untuk `persistCalibrationBatch`:
     //    ```ts
     //    const sampleRowInputs = body.samples.map((rawSample, idx) => ({
@@ -177,13 +182,34 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       analyteResults: evaluated.evaluatedSamples[idx]!.analytes
     }))
     // d) Panggil transaksi ACID `const persisted = await persistCalibrationBatch(deps.db, { ... })`
+    const persisted = await persistCalibrationBatch(deps.db, {
+      userId,
+      title: body.title,
+      instrument: body.instrument,
+      qcProfileId: body.qcProfileId,
+      qcProfileVersion: qcProfile.version,
+      inputMode: body.inputMode,
+      units: body.units,
+      analytesSummary: evaluated.analytesSummary,
+      qcStatus: evaluated.qcStatus,
+      qcViolations: evaluated.qcViolations,
+      analytes: body.analytes,
+      points: body.standards,
+      qcProfileSnapshot: qcProfile,
+      sampleRows: sampleRowInputs,
+    })
     // e) Query kembali row `calibrations` dan `sampleRows` yang baru disimpan, lalu return 201 JSON `toCalibrationBatchResponse(calRow, savedSampleRows)`
-    } catch (err) {
-      return c.json({code: 'METROLOGY_ERROR', message: (err as Error).message}, 422)
-    }
-    //    Jika `evaluateCalibration` melempar error -> return 422 JSON `{ code: 'METROLOGY_ERROR', message: (err as Error).message }`
+    const calRow = await deps.db
+      .select()
+      .from(calibrations)
+      .where(eq(calibrations.id, persisted.calibrationId));
 
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    const savedSampleRows = await deps.db
+      .select()
+      .from(sampleRows)
+      .where(eq(sampleRows.calibrationId, persisted.calibrationId));
+
+    return c.json(toCalibrationBatchResponse(calRow[0]!, savedSampleRows), 201);
   });
 
   // 2. GET /calibrations — Daftar riwayat batch kalibrasi milik user
@@ -251,10 +277,44 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     const userId = c.get('userId');
     const calibrationId = c.req.param('id');
 
-    // TODO (Stage 4C Green - DELETE /calibrations/:id):
-    // Panggil `await deleteCalibration(deps.db, { calibrationId, userId })` di dalam `try { ... } catch { ... }`.
-    // - Jika berhasil -> return `c.body(null, 204)`
-    // - Jika melempar error ('Calibration not found') -> return 404 JSON `{ code: 'NOT_FOUND', message: 'Calibration batch not found' }`
+    try {
+      const deleted = await deleteCalibration(deps.db, {
+        calibrationId,
+        userId,
+      });
+      if (deleted) {
+        return c.body(null, 204);
+      }
+    } catch {
+      return c.json({ code: 'NOT_FOUND', message: 'Calibration batch not found' }, 404);
+    }
+  });
+
+  // 5. GET /calibrations/:id/samples/:sampleRowId/export — Unduh Excel (.xlsx) 1 Sampel (ADR-0008)
+  router.get('/:id/samples/:sampleRowId/export', async (c) => {
+    const userId = c.get('userId');
+    const calibrationId = c.req.param('id');
+    const sampleRowId = c.req.param('sampleRowId');
+
+    // TODO (Stage 4D Green - Export Sample Excel):
+    // a) Cari `cal` di tabel `calibrations` berdasarkan `id === calibrationId` dan `userId === userId`.
+    //    Jika tidak ada -> return 404 JSON `{ code: 'NOT_FOUND', message: 'Calibration batch not found' }`
+    // b) Ambil semua `rows` di tabel `sampleRows` yang memiliki `calibrationId === cal.id`.
+    // c) Cari `targetSample = rows.find((r) => r.id === sampleRowId)`.
+    //    Jika tidak ditemukan -> return 404 JSON `{ code: 'NOT_FOUND', message: 'Sample row not found' }`
+    // d) Cari `blankSample = rows.find((r) => r.sampleType === 'blank_method')!`
+    //    dan `parentSample = targetSample.parentSampleId ? rows.find((r) => r.sampleId === targetSample.parentSampleId) : null`
+    // e) Panggil `const buffer = await generateSampleAuditWorkbook({ calibration: cal, targetSample, blankSample, parentSample })`
+    // f) Kembalikan binary response:
+    //    ```ts
+    //    return new Response(new Uint8Array(buffer), {
+    //      status: 200,
+    //      headers: {
+    //        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    //        'Content-Disposition': `attachment; filename="ValidEx_${cal.instrument}_${targetSample.sampleId}.xlsx"`,
+    //      },
+    //    });
+    //    ```
     return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
   });
 
