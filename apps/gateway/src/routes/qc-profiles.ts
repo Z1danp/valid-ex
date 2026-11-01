@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { components } from '@valid-ex/contracts';
 import { qcCriteriaProfiles, type Database } from '@valid-ex/db';
-import { validateProfile } from '@valid-ex/math';
+import { validateProfile, type QcCriteriaProfile } from '@valid-ex/math';
 import { requireAuth, type AuthVariables } from '../middleware/auth';
 import { validateContract } from '../middleware/validate';
 
@@ -69,14 +69,46 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     // TODO (Stage 4C Green - POST /qc-profiles):
     // a) Cari versi terbaru profil milik `userId` dengan `name === body.name`:
     //    `const existing = await deps.db.select().from(qcCriteriaProfiles).where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name))).orderBy(desc(qcCriteriaProfiles.version))`
+    const existing = await deps.db.select().from(qcCriteriaProfiles).where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name))).orderBy(desc(qcCriteriaProfiles.version))
     // b) Tentukan `profileId` dan `nextVersion`:
     //    Jika `existing[0]` ada -> `profileId = existing[0].id` dan `nextVersion = existing[0].version + 1`
     //    Jika belum ada -> `profileId = randomUUID()` dan `nextVersion = 1`
+    const latest = existing[0]
+    const profileId = latest?.id ?? randomUUID()
+    const nextVersion = latest?.version ? latest.version + 1 : 1
     // c) Bentuk objek `candidateProfile` bertipe `QCCriteriaProfile` lalu panggil `validateProfile(candidateProfile)` di dalam `try { ... } catch (err) { ... }`.
     //    Jika `validateProfile` melempar error -> return 422 JSON `{ code: 'INVALID_QC_PROFILE', message: (err as Error).message }`
+    const candidateProfile: QcCriteriaProfile = {
+      id: profileId,
+      name: body.name,
+      analytes: body.analytes,
+      effectiveDate: body.effectiveDate,
+      linearity: body.linearity,
+      methodRef: body.methodRef,
+      version: nextVersion,
+      solutionConcUnit: body.solutionConcUnit
+    }
+    try {
+      validateProfile(candidateProfile)
+    } catch (err) {
+      return c.json({ code: 'INVALID_QC_PROFILE', message: (err as Error).message }, 422)
+    }
+    const inserted = await deps.db.insert(qcCriteriaProfiles)
+      .values({
+        id: profileId,
+        version: nextVersion,
+        ownerUserId: userId,
+        name: body.name,
+        methodRef: body.methodRef,
+        effectiveDate: body.effectiveDate,
+        solutionConcUnit: body.solutionConcUnit,
+        linearityMinR: body.linearity.minR,
+        analytes: body.analytes
+      })
+      .returning()
     // d) Insert ke tabel `qcCriteriaProfiles` menggunakan `.returning()`, lalu return 201 JSON `toQcProfileDto(inserted[0]!)`
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
-  });
+    return c.json(toQcProfileDto(inserted[0]!), 201)
+});
 
   // 2. GET /qc-profiles (Ambil daftar profil milik user, diurutkan versi terbaru)
   router.get('/', async (c) => {
@@ -106,9 +138,17 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     // TODO (Stage 4C Green - GET /qc-profiles/:id):
     // a) Query `qcCriteriaProfiles` dengan `and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId))`
     //    dan `.orderBy(desc(qcCriteriaProfiles.version))`
+    const rows = await deps.db.select()
+      .from(qcCriteriaProfiles)
+      .where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId))).orderBy(desc(qcCriteriaProfiles.version))
+
+    if (!rows[0]) {
+      return c.json({code: 'NOT_FOUND', message: 'QC Profile note found'}, 404)
+    }
+    
     // b) Jika `rows[0]` tidak ditemukan -> return 404 JSON `{ code: 'NOT_FOUND', message: 'QC Profile not found' }`
     // c) Jika ditemukan -> return 200 JSON `toQcProfileDto(rows[0])`
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    return c.json(toQcProfileDto(rows[0]), 200);
   });
 
   return router;
