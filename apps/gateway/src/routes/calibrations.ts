@@ -296,26 +296,48 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     const calibrationId = c.req.param('id');
     const sampleRowId = c.req.param('sampleRowId');
 
-    // TODO (Stage 4D Green - Export Sample Excel):
-    // a) Cari `cal` di tabel `calibrations` berdasarkan `id === calibrationId` dan `userId === userId`.
-    //    Jika tidak ada -> return 404 JSON `{ code: 'NOT_FOUND', message: 'Calibration batch not found' }`
-    // b) Ambil semua `rows` di tabel `sampleRows` yang memiliki `calibrationId === cal.id`.
-    // c) Cari `targetSample = rows.find((r) => r.id === sampleRowId)`.
-    //    Jika tidak ditemukan -> return 404 JSON `{ code: 'NOT_FOUND', message: 'Sample row not found' }`
-    // d) Cari `blankSample = rows.find((r) => r.sampleType === 'blank_method')!`
-    //    dan `parentSample = targetSample.parentSampleId ? rows.find((r) => r.sampleId === targetSample.parentSampleId) : null`
-    // e) Panggil `const buffer = await generateSampleAuditWorkbook({ calibration: cal, targetSample, blankSample, parentSample })`
-    // f) Kembalikan binary response:
-    //    ```ts
-    //    return new Response(new Uint8Array(buffer), {
-    //      status: 200,
-    //      headers: {
-    //        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    //        'Content-Disposition': `attachment; filename="ValidEx_${cal.instrument}_${targetSample.sampleId}.xlsx"`,
-    //      },
-    //    });
-    //    ```
-    return c.json({ code: 'NOT_IMPLEMENTED', message: 'TODO' }, 501);
+    const calRow = await deps.db
+      .select()
+      .from(calibrations)
+      .where(and(eq(calibrations.id, calibrationId), eq(calibrations.userId, userId)));
+
+    if (!calRow[0]) {
+      return c.json({ code: 'NOT_FOUND', message: 'Calibration batch not found' }, 404);
+    }
+
+    const rows = await deps.db
+      .select()
+      .from(sampleRows)
+      .where(eq(sampleRows.calibrationId, calibrationId));
+
+    const targetSample = rows.find((r) => r.id === sampleRowId);
+    if (!targetSample) {
+      return c.json({ code: 'NOT_FOUND', message: 'Sample row not found' }, 404);
+    }
+
+    const blankSample = rows.find((r) => r.sampleType === 'blank_method');
+    if (!blankSample) {
+      return c.json({ code: 'NOT_FOUND', message: 'Blank sample not found' }, 404);
+    }
+
+    const parentSample = targetSample.parentSampleId
+      ? rows.find((r) => r.sampleId === targetSample.parentSampleId)
+      : null;
+
+    const buffer = await generateSampleAuditWorkbook({
+      calibration: calRow[0],
+      targetSample,
+      blankSample,
+      parentSample,
+    });
+
+    return new Response(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="ValidEx_${calRow[0].instrument}_${targetSample.labSampleId ?? targetSample.sampleId}.xlsx"`,
+      },
+    });
   });
 
   return router;
