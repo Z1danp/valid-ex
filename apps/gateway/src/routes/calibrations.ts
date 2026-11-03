@@ -335,7 +335,7 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="ValidEx_${calRow[0].instrument}_${targetSample.labSampleId ?? targetSample.sampleId}.xlsx"`,
+        'Content-Disposition': `attachment; filename="ValidEx_${calRow[0].instrument}_labSample${targetSample.labSampleId ?? '-'}_sampleId${targetSample.sampleId}.xlsx"`,
       },
     });
   });
