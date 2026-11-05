@@ -66,18 +66,10 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     const userId = c.get('userId');
     const body = c.req.valid('json');
 
-    // TODO (Stage 4C Green - POST /qc-profiles):
-    // a) Cari versi terbaru profil milik `userId` dengan `name === body.name`:
-    //    `const existing = await deps.db.select().from(qcCriteriaProfiles).where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name))).orderBy(desc(qcCriteriaProfiles.version))`
     const existing = await deps.db.select().from(qcCriteriaProfiles).where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name))).orderBy(desc(qcCriteriaProfiles.version))
-    // b) Tentukan `profileId` dan `nextVersion`:
-    //    Jika `existing[0]` ada -> `profileId = existing[0].id` dan `nextVersion = existing[0].version + 1`
-    //    Jika belum ada -> `profileId = randomUUID()` dan `nextVersion = 1`
     const latest = existing[0]
     const profileId = latest?.id ?? randomUUID()
     const nextVersion = latest?.version ? latest.version + 1 : 1
-    // c) Bentuk objek `candidateProfile` bertipe `QCCriteriaProfile` lalu panggil `validateProfile(candidateProfile)` di dalam `try { ... } catch (err) { ... }`.
-    //    Jika `validateProfile` melempar error -> return 422 JSON `{ code: 'INVALID_QC_PROFILE', message: (err as Error).message }`
     const candidateProfile: QcCriteriaProfile = {
       id: profileId,
       name: body.name,
@@ -106,7 +98,6 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
         analytes: body.analytes
       })
       .returning()
-    // d) Insert ke tabel `qcCriteriaProfiles` menggunakan `.returning()`, lalu return 201 JSON `toQcProfileDto(inserted[0]!)`
     return c.json(toQcProfileDto(inserted[0]!), 201)
 });
 
@@ -119,7 +110,6 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
       .where(eq(qcCriteriaProfiles.ownerUserId, userId))
       .orderBy(desc(qcCriteriaProfiles.createdAt), desc(qcCriteriaProfiles.version));
 
-    // Kembalikan versi terbaru untuk setiap profile id unik
     const latestById = new Map<string, typeof qcCriteriaProfiles.$inferSelect>();
     for (const row of rows) {
       const prev = latestById.get(row.id);
@@ -135,9 +125,6 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     const userId = c.get('userId');
     const profileId = c.req.param('id');
 
-    // TODO (Stage 4C Green - GET /qc-profiles/:id):
-    // a) Query `qcCriteriaProfiles` dengan `and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId))`
-    //    dan `.orderBy(desc(qcCriteriaProfiles.version))`
     const rows = await deps.db.select()
       .from(qcCriteriaProfiles)
       .where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId))).orderBy(desc(qcCriteriaProfiles.version))
@@ -146,8 +133,6 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
       return c.json({code: 'NOT_FOUND', message: 'QC Profile note found'}, 404)
     }
     
-    // b) Jika `rows[0]` tidak ditemukan -> return 404 JSON `{ code: 'NOT_FOUND', message: 'QC Profile not found' }`
-    // c) Jika ditemukan -> return 200 JSON `toQcProfileDto(rows[0])`
     return c.json(toQcProfileDto(rows[0]), 200);
   });
 
