@@ -116,7 +116,7 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     const userId = c.get('userId');
     const body = c.req.valid('json');
 
-    // a) Ambil versi terbaru profil QC milik user berdasarkan `body.qcProfileId`
+    // Ambil versi terbaru profil QC milik user berdasarkan `body.qcProfileId`
     const profileRows = await deps.db
       .select()
       .from(qcCriteriaProfiles)
@@ -134,9 +134,6 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     }
     const qcProfile = toQcProfileDto(profileRow);
 
-    // TODO (Stage 4C Green - POST /calibrations):
-    // b) Jalankan `evaluateCalibration({ inputMode: body.inputMode, units: body.units, analytes: body.analytes, standards: body.standards, samples: body.samples, qcProfile })`
-    //    di dalam blok `try { ... } catch (err) { ... }`.
     let evaluated:ReturnType<typeof evaluateCalibration>;
     try {
       evaluated = evaluateCalibration({ 
@@ -152,22 +149,7 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     } catch (err) {
       return c.json({code: 'METROLOGY_ERROR', message: (err as Error).message}, 422)
     }
-      // c) Petakan `body.samples` + `evaluated.evaluatedSamples` menjadi `sampleRows` untuk `persistCalibrationBatch`:
-    //    ```ts
-    //    const sampleRowInputs = body.samples.map((rawSample, idx) => ({
-    //      sampleId: rawSample.sampleId,
-    //      labSampleId: rawSample.labSampleId ?? null,
-    //      sampleType: rawSample.sampleType,
-    //      parentSampleId: rawSample.parentSampleId ?? null,
-    //      weight: rawSample.weight,
-    //      volume: rawSample.volume,
-    //      df: rawSample.df,
-    //      spikeAdded: rawSample.spikeAdded ?? null,
-    //      expectedConc: rawSample.expectedConc ?? null,
-    //      readings: rawSample.readings,
-    //      analyteResults: evaluated.evaluatedSamples[idx]!.analytes,
-    //    }));
-    //    ```
+    
     const sampleRowInputs = body.samples.map((rawSample, idx) => ({
       sampleId: rawSample.sampleId,
       labSampleId: rawSample.labSampleId ?? null,
@@ -181,7 +163,7 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       readings: rawSample.readings,
       analyteResults: evaluated.evaluatedSamples[idx]!.analytes
     }))
-    // d) Panggil transaksi ACID `const persisted = await persistCalibrationBatch(deps.db, { ... })`
+    
     const persisted = await persistCalibrationBatch(deps.db, {
       userId,
       title: body.title,
@@ -198,7 +180,7 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       qcProfileSnapshot: qcProfile,
       sampleRows: sampleRowInputs,
     })
-    // e) Query kembali row `calibrations` dan `sampleRows` yang baru disimpan, lalu return 201 JSON `toCalibrationBatchResponse(calRow, savedSampleRows)`
+    
     const calRow = await deps.db
       .select()
       .from(calibrations)
