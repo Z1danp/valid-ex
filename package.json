@@ -11,7 +11,8 @@
     "test": "pnpm -r test",
     "test:math": "pnpm --filter @valid-ex/math test",
     "typecheck": "pnpm -r typecheck",
-    "gen:contracts": "pnpm --filter @valid-ex/contracts gen"
+    "gen:contracts": "pnpm --filter @valid-ex/contracts gen",
+    "dev:web": "pnpm --filter @valid-ex/web dev"
   },
   "dependencies": {
     "dotenv": "^18.0.8"
