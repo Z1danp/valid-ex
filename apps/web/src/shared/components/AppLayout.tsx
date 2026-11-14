@@ -16,7 +16,10 @@ export default function AppLayout() {
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
-            <NavLink to="/calibrations" className="flex items-center gap-2 font-semibold text-slate-900 tracking-tight">
+            <NavLink
+              to="/calibrations"
+              className="flex items-center gap-2 font-semibold text-slate-900 tracking-tight"
+            >
               <div className="w-8 h-8 rounded-md bg-slate-900 text-white flex items-center justify-center">
                 <FlaskConical className="w-4 h-4 text-emerald-400" />
               </div>
@@ -35,7 +38,9 @@ export default function AppLayout() {
                 to="/calibrations"
                 className={({ isActive }) =>
                   `px-3 py-1.5 rounded-md transition-colors ${
-                    isActive ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    isActive
+                      ? 'bg-slate-100 text-slate-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`
                 }
               >
@@ -45,7 +50,9 @@ export default function AppLayout() {
                 to="/qc-profiles"
                 className={({ isActive }) =>
                   `px-3 py-1.5 rounded-md transition-colors ${
-                    isActive ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    isActive
+                      ? 'bg-slate-100 text-slate-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`
                 }
               >
@@ -74,7 +81,9 @@ export default function AppLayout() {
               <div className="absolute right-0 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg p-1.5 text-xs z-50 animate-in fade-in-50">
                 <div className="px-2.5 py-2 border-b border-slate-100 mb-1">
                   <p className="font-semibold text-slate-900">Zidan Analis</p>
-                  <p className="text-[11px] text-slate-500 truncate font-mono">analis@lab.iso17025.id</p>
+                  <p className="text-[11px] text-slate-500 truncate font-mono">
+                    analis@lab.iso17025.id
+                  </p>
                   <span className="inline-block mt-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                     Local Auth Verified
                   </span>

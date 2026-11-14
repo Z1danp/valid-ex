@@ -65,7 +65,7 @@ export function StandardDataGrid({
   analytes,
   onChange,
   onNotice,
-  unit
+  unit,
 }: StandardDataGridProps) {
   const [colWidths, setColWidths] = useState<Record<string, number>>({
     label: 150,
@@ -105,152 +105,162 @@ export function StandardDataGrid({
     }
   }, []);
 
-  const getCellContent = useCallback((cell: Item): GridCell => {
-    const [col, row] = cell;
-    const item = standards[row];
+  const getCellContent = useCallback(
+    (cell: Item): GridCell => {
+      const [col, row] = cell;
+      const item = standards[row];
 
-    if (!item) {
-      return {
-        kind: GridCellKind.Loading,
-        allowOverlay: false,
-      };
-    }
+      if (!item) {
+        return {
+          kind: GridCellKind.Loading,
+          allowOverlay: false,
+        };
+      }
 
-    if (col === 0) {
+      if (col === 0) {
+        return {
+          kind: GridCellKind.Text,
+          data: item.standardName,
+          displayData: item.standardName,
+          allowOverlay: true,
+          readonly: false,
+        };
+      }
+
+      const analyteIndex = col - 1;
+      const analyte = analytes[analyteIndex];
+      const reading = analyte ? (item.readings[analyte]?.signal ?? 0) : 0;
+
       return {
-        kind: GridCellKind.Text,
-        data: item.standardName,
-        displayData: item.standardName,
+        kind: GridCellKind.Number,
+        data: reading,
+        displayData: String(reading),
         allowOverlay: true,
         readonly: false,
       };
-    }
+    },
+    [standards, analytes],
+  );
 
-    const analyteIndex = col - 1;
-    const analyte = analytes[analyteIndex];
-    const reading = analyte ? item.readings[analyte]?.signal ?? 0 : 0;
+  const handleCellEdited = useCallback(
+    (cell: Item, newValue: EditableGridCell) => {
+      const [col, row] = cell;
+      const updated = [...standards];
+      const target = updated[row];
+      if (!target) return;
 
-    return {
-      kind: GridCellKind.Number,
-      data: reading,
-      displayData: String(reading),
-      allowOverlay: true,
-      readonly: false,
-    };
-  }, [standards, analytes]);
-
-  const handleCellEdited = useCallback((cell: Item, newValue: EditableGridCell) => {
-    const [col, row] = cell;
-    const updated = [...standards];
-    const target = updated[row];
-    if (!target) return;
-
-    const targetRow: StandardRowItem = {
-      ...target,
-      readings: { ...target.readings },
-    };
-
-    if (col === 0 && newValue.kind === GridCellKind.Text) {
-      const cleanName = newValue.data.trim();
-      targetRow.standardName = cleanName;
-      const parsedNom = parseNominalFromName(cleanName, targetRow.nominalConc);
-      targetRow.nominalConc = parsedNom;
-      analytes.forEach((a) => {
-        targetRow.readings[a] = {
-          nominalConc: parsedNom,
-          signal: targetRow.readings[a]?.signal ?? 0,
-        };
-      });
-    } else if (col >= 1) {
-      const analyteIndex = col - 1;
-      const analyte = analytes[analyteIndex];
-      if (analyte) {
-        let val = 0;
-        if (newValue.kind === GridCellKind.Number) {
-          val = typeof newValue.data === 'number' && !isNaN(newValue.data) ? newValue.data : 0;
-        } else if (newValue.kind === GridCellKind.Text) {
-          val = parseFloat(newValue.data) || 0;
-        }
-        targetRow.readings[analyte] = {
-          nominalConc: targetRow.nominalConc,
-          signal: val,
-        };
-      }
-    }
-
-    updated[row] = targetRow;
-    onChange(updated);
-  }, [standards, analytes, onChange]);
-
-  const handlePaste = useCallback((target: Item, values: readonly (readonly string[])[]) => {
-    if (values.length === 0 || values[0]?.length === 0) return false;
-
-    const [startCol, startRow] = target;
-    const updated = [...standards];
-
-    values.forEach((rowVals, rOffset) => {
-      const targetRow = startRow + rOffset;
-
-      while (updated.length <= targetRow) {
-        const prev = updated[updated.length - 1];
-        const nextNom = prev ? prev.nominalConc + 50 : 10;
-        const defaultReadings: Record<string, StandardReading> = {};
-        analytes.forEach((a) => {
-          defaultReadings[a] = { nominalConc: nextNom, signal: 0 };
-        });
-
-        updated.push({
-          standardName: `Std ${nextNom}`,
-          nominalConc: nextNom,
-          readings: defaultReadings,
-        });
-      }
-
-      const rowItem: StandardRowItem = {
-        ...updated[targetRow]!,
-        readings: { ...updated[targetRow]!.readings },
+      const targetRow: StandardRowItem = {
+        ...target,
+        readings: { ...target.readings },
       };
 
-      rowVals.forEach((val, cOffset) => {
-        const targetCol = startCol + cOffset;
-        const clean = val.trim();
-
-        if (targetCol === 0) {
-          rowItem.standardName = clean;
-          const parsedNom = parseNominalFromName(clean, rowItem.nominalConc);
-          rowItem.nominalConc = parsedNom;
-          analytes.forEach((a) => {
-            rowItem.readings[a] = {
-              nominalConc: parsedNom,
-              signal: rowItem.readings[a]?.signal ?? 0,
-            };
-          });
-        } else if (targetCol >= 1) {
-          const aIdx = targetCol - 1;
-          const analyte = analytes[aIdx];
-          if (analyte) {
-            rowItem.readings[analyte] = {
-              nominalConc: rowItem.nominalConc,
-              signal: parseFloat(clean) || 0,
-            };
+      if (col === 0 && newValue.kind === GridCellKind.Text) {
+        const cleanName = newValue.data.trim();
+        targetRow.standardName = cleanName;
+        const parsedNom = parseNominalFromName(cleanName, targetRow.nominalConc);
+        targetRow.nominalConc = parsedNom;
+        analytes.forEach((a) => {
+          targetRow.readings[a] = {
+            nominalConc: parsedNom,
+            signal: targetRow.readings[a]?.signal ?? 0,
+          };
+        });
+      } else if (col >= 1) {
+        const analyteIndex = col - 1;
+        const analyte = analytes[analyteIndex];
+        if (analyte) {
+          let val = 0;
+          if (newValue.kind === GridCellKind.Number) {
+            val = typeof newValue.data === 'number' && !isNaN(newValue.data) ? newValue.data : 0;
+          } else if (newValue.kind === GridCellKind.Text) {
+            val = parseFloat(newValue.data) || 0;
           }
+          targetRow.readings[analyte] = {
+            nominalConc: targetRow.nominalConc,
+            signal: val,
+          };
         }
+      }
+
+      updated[row] = targetRow;
+      onChange(updated);
+    },
+    [standards, analytes, onChange],
+  );
+
+  const handlePaste = useCallback(
+    (target: Item, values: readonly (readonly string[])[]) => {
+      if (values.length === 0 || values[0]?.length === 0) return false;
+
+      const [startCol, startRow] = target;
+      const updated = [...standards];
+
+      values.forEach((rowVals, rOffset) => {
+        const targetRow = startRow + rOffset;
+
+        while (updated.length <= targetRow) {
+          const prev = updated[updated.length - 1];
+          const nextNom = prev ? prev.nominalConc + 50 : 10;
+          const defaultReadings: Record<string, StandardReading> = {};
+          analytes.forEach((a) => {
+            defaultReadings[a] = { nominalConc: nextNom, signal: 0 };
+          });
+
+          updated.push({
+            standardName: `Std ${nextNom}`,
+            nominalConc: nextNom,
+            readings: defaultReadings,
+          });
+        }
+
+        const rowItem: StandardRowItem = {
+          ...updated[targetRow]!,
+          readings: { ...updated[targetRow]!.readings },
+        };
+
+        rowVals.forEach((val, cOffset) => {
+          const targetCol = startCol + cOffset;
+          const clean = val.trim();
+
+          if (targetCol === 0) {
+            rowItem.standardName = clean;
+            const parsedNom = parseNominalFromName(clean, rowItem.nominalConc);
+            rowItem.nominalConc = parsedNom;
+            analytes.forEach((a) => {
+              rowItem.readings[a] = {
+                nominalConc: parsedNom,
+                signal: rowItem.readings[a]?.signal ?? 0,
+              };
+            });
+          } else if (targetCol >= 1) {
+            const aIdx = targetCol - 1;
+            const analyte = analytes[aIdx];
+            if (analyte) {
+              rowItem.readings[analyte] = {
+                nominalConc: rowItem.nominalConc,
+                signal: parseFloat(clean) || 0,
+              };
+            }
+          }
+        });
+
+        updated[targetRow] = rowItem;
       });
 
-      updated[targetRow] = rowItem;
-    });
+      onChange(updated);
 
-    onChange(updated);
+      if (onNotice) {
+        const colTitle =
+          startCol === 0 ? 'Label' : (analytes[startCol - 1] ?? `Kolom ${startCol + 1}`);
+        onNotice(
+          `Berhasil menempelkan ${values.length} baris x ${values[0]?.length} kolom dari Excel ke sel (baris ${startRow + 1}, ${colTitle}).`,
+        );
+      }
 
-    if (onNotice) {
-      const colTitle = startCol === 0 ? 'Label' : (analytes[startCol - 1] ?? `Kolom ${startCol + 1}`);
-      onNotice(
-        `Berhasil menempelkan ${values.length} baris x ${values[0]?.length} kolom dari Excel ke sel (baris ${startRow + 1}, ${colTitle}).`
-      );
-    }
-
-    return false;
-  }, [standards, analytes, onChange, onNotice]);
+      return false;
+    },
+    [standards, analytes, onChange, onNotice],
+  );
 
   const handleAddRow = useCallback(() => {
     const last = standards[standards.length - 1];
@@ -296,45 +306,48 @@ export function StandardDataGrid({
     }
   }, [standards, selection, onChange]);
 
-  const handleDeleteCallback = useCallback((sel: GridSelection) => {
-    if (sel.rows.length > 0) {
-      const selectedRows = sel.rows.toArray();
-      if (standards.length - selectedRows.length < 3) {
-        alert('Deret kalibrasi membutuhkan minimal 3 titik data (df >= 1).');
-        return false;
-      }
-      const updated = standards.filter((_, i) => !selectedRows.includes(i));
-      onChange(updated);
-      setSelection({
-        columns: CompactSelection.empty(),
-        rows: CompactSelection.empty(),
-      });
-      return true;
-    }
-
-    if (sel.current) {
-      const [col, row] = sel.current.cell;
-      const updated = [...standards];
-      const target = updated[row];
-      if (target) {
-        const newTarget = { ...target, readings: { ...target.readings } };
-        if (col === 0) {
-          newTarget.standardName = '';
-        } else if (col >= 1) {
-          const aIdx = col - 1;
-          const a = analytes[aIdx];
-          if (a) {
-            newTarget.readings[a] = { nominalConc: target.nominalConc, signal: 0 };
-          }
+  const handleDeleteCallback = useCallback(
+    (sel: GridSelection) => {
+      if (sel.rows.length > 0) {
+        const selectedRows = sel.rows.toArray();
+        if (standards.length - selectedRows.length < 3) {
+          alert('Deret kalibrasi membutuhkan minimal 3 titik data (df >= 1).');
+          return false;
         }
-        updated[row] = newTarget;
+        const updated = standards.filter((_, i) => !selectedRows.includes(i));
         onChange(updated);
+        setSelection({
+          columns: CompactSelection.empty(),
+          rows: CompactSelection.empty(),
+        });
+        return true;
       }
-      return true;
-    }
 
-    return false;
-  }, [standards, analytes, onChange]);
+      if (sel.current) {
+        const [col, row] = sel.current.cell;
+        const updated = [...standards];
+        const target = updated[row];
+        if (target) {
+          const newTarget = { ...target, readings: { ...target.readings } };
+          if (col === 0) {
+            newTarget.standardName = '';
+          } else if (col >= 1) {
+            const aIdx = col - 1;
+            const a = analytes[aIdx];
+            if (a) {
+              newTarget.readings[a] = { nominalConc: target.nominalConc, signal: 0 };
+            }
+          }
+          updated[row] = newTarget;
+          onChange(updated);
+        }
+        return true;
+      }
+
+      return false;
+    },
+    [standards, analytes, onChange],
+  );
 
   const selectedRowCount = selection.rows.length;
   const activeCellDesc = useMemo(() => {
@@ -379,7 +392,9 @@ export function StandardDataGrid({
             {activeCellDesc}
           </span>
           <span className="text-slate-300">|</span>
-          <span className="text-slate-400">{standards.length} baris &times; {columns.length} kolom</span>
+          <span className="text-slate-400">
+            {standards.length} baris &times; {columns.length} kolom
+          </span>
         </div>
       </div>
 
@@ -415,10 +430,18 @@ export function StandardDataGrid({
         <ClipboardCopy className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5 leading-relaxed">
           <div>
-            <strong>Format Kolom Excel:</strong> <code className="text-slate-700 bg-white px-1 py-0.5 rounded border border-slate-200">Label | {analytes.join(' | ')}</code>. Blok di Excel &rarr; <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+C</kbd> &rarr; Klik sel target di tabel &rarr; <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+V</kbd>.
+            <strong>Format Kolom Excel:</strong>{' '}
+            <code className="text-slate-700 bg-white px-1 py-0.5 rounded border border-slate-200">
+              Label | {analytes.join(' | ')}
+            </code>
+            . Blok di Excel &rarr;{' '}
+            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+C</kbd>{' '}
+            &rarr; Klik sel target di tabel &rarr;{' '}
+            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+V</kbd>.
           </div>
           <div className="text-slate-400">
-            Klik ganda atau ketik langsung angka pada sel untuk mengedit. Konsentrasi nominal otomatis diekstrak dari label (Blank &rarr; 0 ppb, Std 10 &rarr; 10 ppb, dst.).
+            Klik ganda atau ketik langsung angka pada sel untuk mengedit. Konsentrasi nominal
+            otomatis diekstrak dari label (Blank &rarr; 0 ppb, Std 10 &rarr; 10 ppb, dst.).
           </div>
         </div>
       </div>

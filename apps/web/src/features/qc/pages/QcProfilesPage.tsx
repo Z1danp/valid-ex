@@ -9,12 +9,15 @@ export default function QcProfilesPage() {
             Master Profil Kriteria Kontrol Mutu (QC)
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manajemen profil kriteria penerimaan ISO/IEC 17025 yang ber-versi, governed, dan bersitasi metode SOP
+            Manajemen profil kriteria penerimaan ISO/IEC 17025 yang ber-versi, governed, dan
+            bersitasi metode SOP
           </p>
         </div>
 
         <button
-          onClick={() => alert('Fitur pembuatan versi profil baru akan memanggil POST /qc-profiles')}
+          onClick={() =>
+            alert('Fitur pembuatan versi profil baru akan memanggil POST /qc-profiles')
+          }
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors shadow-xs"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -37,33 +40,43 @@ export default function QcProfilesPage() {
               </div>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                <span>Sitasi: SOP Pengujian Spektrometri Emisi &amp; Massa Lab No. MET-04/Rev.3</span>
+                <span>
+                  Sitasi: SOP Pengujian Spektrometri Emisi &amp; Massa Lab No. MET-04/Rev.3
+                </span>
               </p>
             </div>
           </div>
 
-          <span className="text-xs font-mono text-slate-500">
-            Immutable Snapshot (ADR-0007)
-          </span>
+          <span className="text-xs font-mono text-slate-500">Immutable Snapshot (ADR-0007)</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
           <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1">
-            <div className="text-[10px] uppercase font-sans text-slate-500">Linearitas Minimum (r)</div>
+            <div className="text-[10px] uppercase font-sans text-slate-500">
+              Linearitas Minimum (r)
+            </div>
             <div className="text-sm font-bold text-slate-900">&ge; 0.9950</div>
             <div className="text-[10px] text-slate-500 font-sans">Koefisien korelasi Pearson</div>
           </div>
 
           <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1">
-            <div className="text-[10px] uppercase font-sans text-slate-500">CCV Recovery Target</div>
+            <div className="text-[10px] uppercase font-sans text-slate-500">
+              CCV Recovery Target
+            </div>
             <div className="text-sm font-bold text-slate-900">90.0% – 110.0%</div>
-            <div className="text-[10px] text-slate-500 font-sans">Continuing Calibration Verification</div>
+            <div className="text-[10px] text-slate-500 font-sans">
+              Continuing Calibration Verification
+            </div>
           </div>
 
           <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1">
-            <div className="text-[10px] uppercase font-sans text-slate-500">Matrix Spike Recovery</div>
+            <div className="text-[10px] uppercase font-sans text-slate-500">
+              Matrix Spike Recovery
+            </div>
             <div className="text-sm font-bold text-slate-900">60.0% – 115.0%</div>
-            <div className="text-[10px] text-slate-500 font-sans">Uji temu balik matriks sampel</div>
+            <div className="text-[10px] text-slate-500 font-sans">
+              Uji temu balik matriks sampel
+            </div>
           </div>
 
           <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1">
@@ -76,7 +89,9 @@ export default function QcProfilesPage() {
         <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/30 text-xs text-slate-600 flex items-start gap-2.5">
           <Layers className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
           <p className="leading-relaxed">
-            Profil ini di-snapshot ke setiap batch kalibrasi saat submit. Mengubah ambang toleransi di atas secara otomatis akan menerbitkan versi baru (Rev. 2) tanpa mengubah hasil audit batch terdahulu.
+            Profil ini di-snapshot ke setiap batch kalibrasi saat submit. Mengubah ambang toleransi
+            di atas secara otomatis akan menerbitkan versi baru (Rev. 2) tanpa mengubah hasil audit
+            batch terdahulu.
           </p>
         </div>
       </div>

@@ -134,22 +134,22 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
     }
     const qcProfile = toQcProfileDto(profileRow);
 
-    let evaluated:ReturnType<typeof evaluateCalibration>;
+    let evaluated: ReturnType<typeof evaluateCalibration>;
     try {
-      evaluated = evaluateCalibration({ 
-        inputMode: body.inputMode, 
-        units: body.units, 
-        analytes: body.analytes, 
-        standards: body.standards, 
-        samples: body.samples, 
-        qcProfile: qcProfile, 
-        instrument: body.instrument, 
-        title: body.title
-      })
+      evaluated = evaluateCalibration({
+        inputMode: body.inputMode,
+        units: body.units,
+        analytes: body.analytes,
+        standards: body.standards,
+        samples: body.samples,
+        qcProfile: qcProfile,
+        instrument: body.instrument,
+        title: body.title,
+      });
     } catch (err) {
-      return c.json({code: 'METROLOGY_ERROR', message: (err as Error).message}, 422)
+      return c.json({ code: 'METROLOGY_ERROR', message: (err as Error).message }, 422);
     }
-    
+
     const sampleRowInputs = body.samples.map((rawSample, idx) => ({
       sampleId: rawSample.sampleId,
       labSampleId: rawSample.labSampleId ?? null,
@@ -161,9 +161,9 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       spikeAdded: rawSample.spikeAdded ?? null,
       expectedConc: rawSample.expectedConc ?? null,
       readings: rawSample.readings,
-      analyteResults: evaluated.evaluatedSamples[idx]!.analytes
-    }))
-    
+      analyteResults: evaluated.evaluatedSamples[idx]!.analytes,
+    }));
+
     const persisted = await persistCalibrationBatch(deps.db, {
       userId,
       title: body.title,
@@ -179,8 +179,8 @@ export function createCalibrationRoutes(deps: CalibrationRouteDeps) {
       points: body.standards,
       qcProfileSnapshot: qcProfile,
       sampleRows: sampleRowInputs,
-    })
-    
+    });
+
     const calRow = await deps.db
       .select()
       .from(calibrations)

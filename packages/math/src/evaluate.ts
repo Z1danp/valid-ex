@@ -1,5 +1,31 @@
-import type { AnalyteCriteria, CalibrationInput, AnalyteSampleResult, CalibrationOutput, CurveMetrics, Point, QCStatus, QCViolation, EvaluatedSampleRow } from './types';
-import { selectRecoveryBand, resolveAnalyteCriteria, validateProfile, assertMinNonZeroLevels, linearRegression, instrumentDetectionLimits, inverseConcentration, classifyZone, toSolidConcentration, formatReportedValue, ccvRecovery, spikeRecovery, relativePercentDifference, type SolidConversionParams, selectRpdBand } from './index'
+import type {
+  AnalyteCriteria,
+  CalibrationInput,
+  AnalyteSampleResult,
+  CalibrationOutput,
+  CurveMetrics,
+  Point,
+  QCStatus,
+  QCViolation,
+  EvaluatedSampleRow,
+} from './types';
+import {
+  selectRecoveryBand,
+  resolveAnalyteCriteria,
+  validateProfile,
+  assertMinNonZeroLevels,
+  linearRegression,
+  instrumentDetectionLimits,
+  inverseConcentration,
+  classifyZone,
+  toSolidConcentration,
+  formatReportedValue,
+  ccvRecovery,
+  spikeRecovery,
+  relativePercentDifference,
+  type SolidConversionParams,
+  selectRpdBand,
+} from './index';
 
 /**
  * Orkestrator utama (ADR-0003: isomorphic zero-drift).
@@ -51,21 +77,24 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
   // SETUP BATCH — sudah dikerjakan
   // Validasi profil QC + wajib ada blanko metode (sampel preparasi, BUKAN blank standar kurva).
   // =========================================================================
-  validateProfile(input.qcProfile)
-  const methodBlank = input.samples.find((s) => s.sampleType === 'blank_method')
+  validateProfile(input.qcProfile);
+  const methodBlank = input.samples.find((s) => s.sampleType === 'blank_method');
   if (!methodBlank) {
-    throw new Error("Batch must contain at least one sample with sampleType blank method")
+    throw new Error('Batch must contain at least one sample with sampleType blank method');
   }
 
   // Akumulator hasil akhir + konteks per analit (criteria, metrics kurva, C_blank)
-  const qcViolations: QCViolation[] = []
+  const qcViolations: QCViolation[] = [];
   const analytesSummary: Record<string, CurveMetrics> = {};
-  const analyteContext: Record<string, {
-    criteria: AnalyteCriteria;
-    metrics: CurveMetrics;
-    cBlank: number;
-  }> = {};
-  const evaluatedSamples: EvaluatedSampleRow[] = []
+  const analyteContext: Record<
+    string,
+    {
+      criteria: AnalyteCriteria;
+      metrics: CurveMetrics;
+      cBlank: number;
+    }
+  > = {};
+  const evaluatedSamples: EvaluatedSampleRow[] = [];
 
   // =========================================================================
   // PASS 1: KURVA + C_BLANK PER ANALIT — sudah dikerjakan
@@ -79,22 +108,26 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
 
     // Standards: readings[analyte] = { nominalConc, signal } → Point { x, y }
     // (beda dari sampel: readings[analyte] di sampel sudah number langsung)
-    const points: Point[] = input.standards.filter((s) => s.readings[analyte] !== undefined).map((s) => {
-      const reading = s.readings[analyte]
+    const points: Point[] = input.standards
+      .filter((s) => s.readings[analyte] !== undefined)
+      .map((s) => {
+        const reading = s.readings[analyte];
 
-      if (reading === undefined || reading.nominalConc === null || reading.signal === null) {
-        throw new Error(`Invalid standard point for analyte ${analyte}: nominalConc or signal is null`)
-      }
+        if (reading === undefined || reading.nominalConc === null || reading.signal === null) {
+          throw new Error(
+            `Invalid standard point for analyte ${analyte}: nominalConc or signal is null`,
+          );
+        }
 
-      return {
-        x: reading.nominalConc,
-        y: reading.signal
-      }
-    })
+        return {
+          x: reading.nominalConc,
+          y: reading.signal,
+        };
+      });
 
     // Invariant D1: minimal 5 level non-zero + blank standar di deret kalibrasi
-    assertMinNonZeroLevels(points)
-    const reg = linearRegression(points)
+    assertMinNonZeroLevels(points);
+    const reg = linearRegression(points);
 
     // Soft-flag linearitas — jangan throw, cukup catat QCViolation
     const minR = input.qcProfile.linearity.minR;
@@ -107,27 +140,31 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
           bandMaxConc: null,
           max: null,
           min: minR,
-          testValue: reg.r
+          testValue: reg.r,
         },
         expected: `r >= ${minR}`,
-        message: "Linearity correlation (r) must be greater than or equal to the minimum R specified in the QC profile.",
+        message:
+          'Linearity correlation (r) must be greater than or equal to the minimum R specified in the QC profile.',
         profileVersion: input.qcProfile.version,
-        sampleId: null
-      })
+        sampleId: null,
+      });
     }
 
     // LOD/LOQ instrumen di vial (solutionConcUnit): k * syx / slope
     // Nanti disimpan di CurveMetrics / analytesSummary — beda dari lodMethod (padatan per sampel)
-    const lodLoQInstrument = instrumentDetectionLimits(reg.slope, reg.syx)
+    const lodLoQInstrument = instrumentDetectionLimits(reg.slope, reg.syx);
 
     // C_blank dari blanko metode: readings = number (bukan { signal })
     // mode A (raw_signal) → inverse ke konsentrasi; mode B → pakai angka langsung
-    const blankReading = methodBlank.readings[analyte]
+    const blankReading = methodBlank.readings[analyte];
     if (blankReading === undefined || blankReading === null) {
-      throw new Error(`Blank method for analyte ${analyte} is not found`)
+      throw new Error(`Blank method for analyte ${analyte} is not found`);
     }
 
-    const cBlank = input.inputMode === 'raw_signal' ? inverseConcentration(blankReading, reg.slope, reg.intercept) : blankReading
+    const cBlank =
+      input.inputMode === 'raw_signal'
+        ? inverseConcentration(blankReading, reg.slope, reg.intercept)
+        : blankReading;
 
     // Simpan konteks supaya PASS 2 tinggal pakai (jangan hitung ulang kurva)
     analyteContext[analyte] = {
@@ -139,13 +176,13 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         rSquared: reg.rSquared,
         syx: reg.syx,
         lodInstrument: lodLoQInstrument.lod,
-        loqInstrument: lodLoQInstrument.loq
+        loqInstrument: lodLoQInstrument.loq,
       },
-      cBlank: cBlank
-    }
+      cBlank: cBlank,
+    };
 
     // TODO [4f]: analytesSummary[analyte] = analyteContext[analyte].metrics
-    analytesSummary[analyte] = analyteContext[analyte].metrics
+    analytesSummary[analyte] = analyteContext[analyte].metrics;
   }
   // =========================================================================
   // PASS 2: SAMPLE EVALUATION — WIP (masih di dalam loop analit → perlu dipindah)
@@ -157,17 +194,28 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
 
     for (const analyte of input.analytes) {
       const criteria = analyteContext[analyte]!.criteria;
-      const reading = sample.readings[analyte]
+      const reading = sample.readings[analyte];
       if (reading === undefined || reading === null) {
-        throw new Error(`Reading for analyte ${analyte} is not found in sample ${sample.sampleId}`)
+        throw new Error(`Reading for analyte ${analyte} is not found in sample ${sample.sampleId}`);
       }
 
       // Larutan: cRaw (mode-aware) lalu koreksi blanko → cNet
-      const cRaw = input.inputMode === 'raw_signal' ? inverseConcentration(reading, analyteContext[analyte]!.metrics.slope, analyteContext[analyte]!.metrics.intercept) : reading
-      const cNet = cRaw - analyteContext[analyte]!.cBlank
+      const cRaw =
+        input.inputMode === 'raw_signal'
+          ? inverseConcentration(
+              reading,
+              analyteContext[analyte]!.metrics.slope,
+              analyteContext[analyte]!.metrics.intercept,
+            )
+          : reading;
+      const cNet = cRaw - analyteContext[analyte]!.cBlank;
 
       // Zona deteksi di level larutan (pakai lod/loq INSTRUMEN dari kurva)
-      const zone = classifyZone(cNet, analyteContext[analyte]!.metrics.lodInstrument, analyteContext[analyte]!.metrics.loqInstrument)
+      const zone = classifyZone(
+        cNet,
+        analyteContext[analyte]!.metrics.lodInstrument,
+        analyteContext[analyte]!.metrics.loqInstrument,
+      );
 
       // Konversi unit: W/V/df dari SAMPLE ini + unit dari batch
       const conversionParams: SolidConversionParams = {
@@ -177,18 +225,30 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         weight: sample.weight,
         weightUnit: input.units.weightUnit,
         solutionConcUnit: input.units.solutionConcUnit,
-        solidResultUnit: input.units.solidResultUnit
-      }
+        solidResultUnit: input.units.solidResultUnit,
+      };
 
       // lodMethod/loqMethod = batas metode di PADATAN untuk sampel ini (skala 1/berat)
-      const lodMethod = toSolidConcentration(analyteContext[analyte]!.metrics.lodInstrument, conversionParams)
-      const loqMethod = toSolidConcentration(analyteContext[analyte]!.metrics.loqInstrument, conversionParams)
+      const lodMethod = toSolidConcentration(
+        analyteContext[analyte]!.metrics.lodInstrument,
+        conversionParams,
+      );
+      const loqMethod = toSolidConcentration(
+        analyteContext[analyte]!.metrics.loqInstrument,
+        conversionParams,
+      );
 
       // concSolid hanya diisi kalau zone valid; selain itu null (ND / qualitative)
-      const concSolid = zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null
+      const concSolid =
+        zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null;
 
       // TODO [4c]: reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit })
-      const reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit: conversionParams.solidResultUnit })
+      const reportedValue = formatReportedValue({
+        zone,
+        concSolid,
+        loqMethod,
+        solidResultUnit: conversionParams.solidResultUnit,
+      });
       // TODO [4d]: analytesResult[analyte] = { cRaw, cNet, concSolid, detectionZone: zone,
       //              reportedValue, lodMethod, loqMethod, rpd: null, spikeRecovery: null, ccvRecovery: null }
       analytesResult[analyte] = {
@@ -202,19 +262,21 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         rpd: null,
         spikeRecovery: null,
         ccvRecovery: null,
-      }
+      };
       // TODO [5]:  isi ccvRecovery / spikeRecovery / rpd sesuai sampleType (+ parent untuk spike/dup)
       // ccvRecovery
       if (sample.sampleType === 'ccv') {
-        const expected = sample.expectedConc?.[analyte]
+        const expected = sample.expectedConc?.[analyte];
         if (expected === undefined || expected === null) {
-          throw new Error(`Expected concentration for analyte ${analyte} is not found in sample ${sample.sampleId}`)
+          throw new Error(
+            `Expected concentration for analyte ${analyte} is not found in sample ${sample.sampleId}`,
+          );
         }
-        const recovery = ccvRecovery(cRaw, expected)
-        analytesResult[analyte].ccvRecovery = recovery
-        const band = selectRecoveryBand(criteria.ccv.bands, expected)
+        const recovery = ccvRecovery(cRaw, expected);
+        analytesResult[analyte].ccvRecovery = recovery;
+        const band = selectRecoveryBand(criteria.ccv.bands, expected);
         if (band === null) {
-          throw new Error(`Recovery band for analyte ${analyte} is not found`)
+          throw new Error(`Recovery band for analyte ${analyte} is not found`);
         }
         if (recovery < band.minRecovery || recovery > band.maxRecovery) {
           qcViolations.push({
@@ -225,27 +287,34 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
               bandMaxConc: null,
               max: band.maxRecovery,
               min: band.minRecovery,
-              testValue: expected
+              testValue: expected,
             },
             expected: `ccvRecovery >= ${band.minRecovery} && ccvRecovery <= ${band.maxRecovery}`,
-            message: "CCV recovery must be between the minimum and maximum recovery specified in the QC profile.",
+            message:
+              'CCV recovery must be between the minimum and maximum recovery specified in the QC profile.',
             profileVersion: input.qcProfile.version,
-            sampleId: sample.sampleId ?? null
-          })
+            sampleId: sample.sampleId ?? null,
+          });
         }
-
       }
 
       // search parentSample
-      const parentSample = input.samples.find((s) => s.sampleId === sample.parentSampleId)
+      const parentSample = input.samples.find((s) => s.sampleId === sample.parentSampleId);
       // spikeRecovery
       if (sample.sampleType === 'spike' && parentSample) {
-        const cUnspikeNet = (input.inputMode === 'raw_signal' ? inverseConcentration(parentSample.readings[analyte] ?? 0, analyteContext[analyte]!.metrics.slope, analyteContext[analyte]!.metrics.intercept) : parentSample.readings[analyte] ?? 0) - analyteContext[analyte]!.cBlank
-        const recovery = spikeRecovery(cNet, cUnspikeNet, sample.spikeAdded?.[analyte] ?? 0)
-        analytesResult[analyte].spikeRecovery = recovery
-        const band = selectRecoveryBand(criteria.spike.bands, sample.spikeAdded?.[analyte] ?? 0)
+        const cUnspikeNet =
+          (input.inputMode === 'raw_signal'
+            ? inverseConcentration(
+                parentSample.readings[analyte] ?? 0,
+                analyteContext[analyte]!.metrics.slope,
+                analyteContext[analyte]!.metrics.intercept,
+              )
+            : (parentSample.readings[analyte] ?? 0)) - analyteContext[analyte]!.cBlank;
+        const recovery = spikeRecovery(cNet, cUnspikeNet, sample.spikeAdded?.[analyte] ?? 0);
+        analytesResult[analyte].spikeRecovery = recovery;
+        const band = selectRecoveryBand(criteria.spike.bands, sample.spikeAdded?.[analyte] ?? 0);
         if (band === null) {
-          throw new Error(`Recovery band for analyte ${analyte} is not found`)
+          throw new Error(`Recovery band for analyte ${analyte} is not found`);
         }
         if (recovery < band.minRecovery || recovery > band.maxRecovery) {
           qcViolations.push({
@@ -256,23 +325,31 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
               bandMaxConc: null,
               max: band.maxRecovery,
               min: band.minRecovery,
-              testValue: recovery
+              testValue: recovery,
             },
             expected: `spikeRecovery >= ${band.minRecovery} && spikeRecovery <= ${band.maxRecovery}`,
-            message: "Spike recovery must be between the minimum and maximum recovery specified in the QC profile.",
+            message:
+              'Spike recovery must be between the minimum and maximum recovery specified in the QC profile.',
             profileVersion: input.qcProfile.version,
-            sampleId: sample.sampleId ?? null
-          })
+            sampleId: sample.sampleId ?? null,
+          });
         }
       }
       // rpd
       if (sample.sampleType === 'duplicate' && parentSample) {
-        const cPairNet = (input.inputMode === 'raw_signal' ? inverseConcentration(parentSample.readings[analyte] ?? 0, analyteContext[analyte]!.metrics.slope, analyteContext[analyte]!.metrics.intercept) : parentSample.readings[analyte] ?? 0) - analyteContext[analyte]!.cBlank
-        const rpd = relativePercentDifference(cPairNet, cNet)
-        analytesResult[analyte].rpd = rpd
-        const band = selectRpdBand(criteria.duplicate.bands, parentSample.readings[analyte] ?? 0)
+        const cPairNet =
+          (input.inputMode === 'raw_signal'
+            ? inverseConcentration(
+                parentSample.readings[analyte] ?? 0,
+                analyteContext[analyte]!.metrics.slope,
+                analyteContext[analyte]!.metrics.intercept,
+              )
+            : (parentSample.readings[analyte] ?? 0)) - analyteContext[analyte]!.cBlank;
+        const rpd = relativePercentDifference(cPairNet, cNet);
+        analytesResult[analyte].rpd = rpd;
+        const band = selectRpdBand(criteria.duplicate.bands, parentSample.readings[analyte] ?? 0);
         if (band === null) {
-          throw new Error(`RPD band for analyte ${analyte} is not found`)
+          throw new Error(`RPD band for analyte ${analyte} is not found`);
         }
         if (rpd !== null && rpd > band.maxRpd) {
           qcViolations.push({
@@ -283,20 +360,28 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
               bandMaxConc: band.maxConc,
               max: band.maxRpd,
               min: null,
-              testValue: rpd
+              testValue: rpd,
             },
             expected: `rpd <= ${band.maxRpd}`,
-            message: "RPD must be between the minimum and maximum RPD specified in the QC profile.",
+            message: 'RPD must be between the minimum and maximum RPD specified in the QC profile.',
             profileVersion: input.qcProfile.version,
-            sampleId: sample.sampleId ?? null
-          })
+            sampleId: sample.sampleId ?? null,
+          });
         }
       }
       // TODO [5b]: soft-flag band (selectRecoveryBand / selectRpdBand) → push ke qcViolations
       // soft-flag band ccvRecovery
       // TODO [4e]: setelah loop analit dalam selesai
     }
-    evaluatedSamples.push({ sampleId: sample.sampleId ?? null, sampleType: sample.sampleType, parentSampleId: sample.parentSampleId ?? null, weight: sample.weight, volume: sample.volume, df: sample.df, analytes: analytesResult })
+    evaluatedSamples.push({
+      sampleId: sample.sampleId ?? null,
+      sampleType: sample.sampleType,
+      parentSampleId: sample.parentSampleId ?? null,
+      weight: sample.weight,
+      volume: sample.volume,
+      df: sample.df,
+      analytes: analytesResult,
+    });
   }
   // Soft-flag: QC gagal tidak melempar — hanya status + daftar violation
   return {
@@ -304,5 +389,5 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
     evaluatedSamples,
     qcViolations,
     qcStatus: qcViolations.length > 0 ? 'INVALID_QC' : 'PASSED',
-  }
+  };
 }

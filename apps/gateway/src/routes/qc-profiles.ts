@@ -66,10 +66,16 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     const userId = c.get('userId');
     const body = c.req.valid('json');
 
-    const existing = await deps.db.select().from(qcCriteriaProfiles).where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name))).orderBy(desc(qcCriteriaProfiles.version))
-    const latest = existing[0]
-    const profileId = latest?.id ?? randomUUID()
-    const nextVersion = latest?.version ? latest.version + 1 : 1
+    const existing = await deps.db
+      .select()
+      .from(qcCriteriaProfiles)
+      .where(
+        and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.name, body.name)),
+      )
+      .orderBy(desc(qcCriteriaProfiles.version));
+    const latest = existing[0];
+    const profileId = latest?.id ?? randomUUID();
+    const nextVersion = latest?.version ? latest.version + 1 : 1;
     const candidateProfile: QcCriteriaProfile = {
       id: profileId,
       name: body.name,
@@ -78,14 +84,15 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
       linearity: body.linearity,
       methodRef: body.methodRef,
       version: nextVersion,
-      solutionConcUnit: body.solutionConcUnit
-    }
+      solutionConcUnit: body.solutionConcUnit,
+    };
     try {
-      validateProfile(candidateProfile)
+      validateProfile(candidateProfile);
     } catch (err) {
-      return c.json({ code: 'INVALID_QC_PROFILE', message: (err as Error).message }, 422)
+      return c.json({ code: 'INVALID_QC_PROFILE', message: (err as Error).message }, 422);
     }
-    const inserted = await deps.db.insert(qcCriteriaProfiles)
+    const inserted = await deps.db
+      .insert(qcCriteriaProfiles)
       .values({
         id: profileId,
         version: nextVersion,
@@ -95,11 +102,11 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
         effectiveDate: body.effectiveDate,
         solutionConcUnit: body.solutionConcUnit,
         linearityMinR: body.linearity.minR,
-        analytes: body.analytes
+        analytes: body.analytes,
       })
-      .returning()
-    return c.json(toQcProfileDto(inserted[0]!), 201)
-});
+      .returning();
+    return c.json(toQcProfileDto(inserted[0]!), 201);
+  });
 
   // 2. GET /qc-profiles (Ambil daftar profil milik user, diurutkan versi terbaru)
   router.get('/', async (c) => {
@@ -125,14 +132,16 @@ export function createQcProfileRoutes(deps: QcProfileRouteDeps) {
     const userId = c.get('userId');
     const profileId = c.req.param('id');
 
-    const rows = await deps.db.select()
+    const rows = await deps.db
+      .select()
       .from(qcCriteriaProfiles)
-      .where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId))).orderBy(desc(qcCriteriaProfiles.version))
+      .where(and(eq(qcCriteriaProfiles.ownerUserId, userId), eq(qcCriteriaProfiles.id, profileId)))
+      .orderBy(desc(qcCriteriaProfiles.version));
 
     if (!rows[0]) {
-      return c.json({code: 'NOT_FOUND', message: 'QC Profile note found'}, 404)
+      return c.json({ code: 'NOT_FOUND', message: 'QC Profile note found' }, 404);
     }
-    
+
     return c.json(toQcProfileDto(rows[0]), 200);
   });
 

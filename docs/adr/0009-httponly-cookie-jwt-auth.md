@@ -18,7 +18,7 @@ Namun, penyimpanan token secara manual di sisi klien (khususnya jika disimpan di
 ## 2. Decision Drivers
 
 - **Mitigasi Pencurian Token via XSS**: Token sesi tidak boleh dapat diakses oleh runtime JavaScript di browser (`document.cookie` maupun `window.localStorage`).
-- **Stateless Serverless (Invariant T3)**: Tetap mempertahankan sifat *stateless* JWT tanpa tabel sesi di database pada setiap *request*, selaras dengan arsitektur Vercel Serverless.
+- **Stateless Serverless (Invariant T3)**: Tetap mempertahankan sifat _stateless_ JWT tanpa tabel sesi di database pada setiap _request_, selaras dengan arsitektur Vercel Serverless.
 - **Kemudahan Integrasi Browser (`hono/cookie`)**: Memanfaatkan mekanisme standar HTTP `Set-Cookie` dan `Cookie` bawaan browser serta modul resmi `hono/cookie` tanpa ketergantungan pustaka eksternal `cookie-parser`.
 - **Siklus Hidup Sesi yang Lengkap (Logout)**: Karena JavaScript di browser tidak dapat menghapus cookie berbendera `HttpOnly`, kontrak API wajib menyediakan endpoint eksplisit `POST /auth/logout` agar server dapat menginstruksikan penghapusan cookie (`Max-Age=0`).
 
@@ -51,4 +51,4 @@ Namun, penyimpanan token secara manual di sisi klien (khususnya jika disimpan di
    - Menghapus cookie `valid_ex_token` melalui `deleteCookie(c, 'valid_ex_token', { path: '/' })` dan mengembalikan status `204 No Content`.
 4. **Konfigurasi CORS & Mitigasi CSRF**:
    - Middleware CORS di Hono mengaktifkan `credentials: true`.
-   - Atribut `SameSite=Lax` dikombinasikan dengan penegakan `Content-Type: application/json` (via validator kontrak Zod) pada seluruh endpoint mutasi untuk menangkal *Cross-Site Request Forgery* (CSRF).
+   - Atribut `SameSite=Lax` dikombinasikan dengan penegakan `Content-Type: application/json` (via validator kontrak Zod) pada seluruh endpoint mutasi untuk menangkal _Cross-Site Request Forgery_ (CSRF).

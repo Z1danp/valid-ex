@@ -31,15 +31,12 @@ import { SampleDataGrid, type SampleRowState } from '../components/SampleDataGri
 import type { components } from '@valid-ex/contracts';
 import MetadataWizard from '../components/MetadataWizard';
 
-  type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
-  type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit'];
-  type InputMode = components['schemas']['InputMode'];
-  type Instrument = components['schemas']['InstrumentType']
+type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
+type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit'];
+type InputMode = components['schemas']['InputMode'];
+type Instrument = components['schemas']['InstrumentType'];
 
-
-
-
-const INITIAL_ANALYTES: string[] = [];
+const INITIAL_ANALYTES: string[] = ['Cd'];
 
 const DEFAULT_LEVELS = [
   { name: 'Blank', nominal: 0 },
@@ -57,18 +54,15 @@ const INITIAL_STANDARDS: StandardRowItem[] = DEFAULT_LEVELS.map((lvl) => ({
 }));
 
 const INITIAL_SAMPLES: SampleRowState[] = [
-  { id: 'MB', type: 'blank_method', parent: '', weight: 0.2000, vol: 50, df: 1, readings: {} },
+  { id: 'MB', type: 'blank_method', parent: '', weight: 0.2, vol: 50, df: 1, readings: {} },
   { id: 'S1', type: 'sample', parent: '', weight: 0.2014, vol: 50, df: 1, readings: {} },
   { id: 'S2', type: 'sample', parent: '', weight: 0.2005, vol: 50, df: 1, readings: {} },
-  { id: 'CCV1', type: 'ccv', parent: '', weight: 0.2000, vol: 50, df: 1, readings: {} },
-  { id: 'SP1', type: 'spike', parent: 'S1', weight: 0.2000, vol: 50, df: 1, readings: {} },
-  { id: 'D1', type: 'duplicate', parent: 'S1', weight: 0.2010, vol: 50, df: 1, readings: {} },
+  { id: 'CCV1', type: 'ccv', parent: '', weight: 0.2, vol: 50, df: 1, readings: {} },
+  { id: 'SP1', type: 'spike', parent: 'S1', weight: 0.2, vol: 50, df: 1, readings: {} },
+  { id: 'D1', type: 'duplicate', parent: 'S1', weight: 0.201, vol: 50, df: 1, readings: {} },
 ];
 
 export default function CalibrationWizardPage() {
-  
-
-  
   /// state section
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -76,12 +70,11 @@ export default function CalibrationWizardPage() {
   const [title, setTitle] = useState('Pengujian ICP-MS Logam Berat Beras Putih');
   const [instrument, setInstrument] = useState<Instrument>('ICP-MS');
   const [inputMode, setInputMode] = useState<InputMode>('raw_signal');
-  const [unit, setUnit] = useState<SolutionConcUnit>('ppm')
-  const [signalUnit, setSignalUnit] = useState<SignalUnit>('cps')
+  const [unit, setUnit] = useState<SolutionConcUnit>('ppm');
+  const [signalUnit, setSignalUnit] = useState<SignalUnit>('cps');
 
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
   const [editingAnalyte, setEditingAnalyte] = useState<string | null>(null);
-  
 
   const [selectedAnalyte, setSelectedAnalyte] = useState<string>('');
   const [quickAddAnalyteInput, setQuickAddAnalyteInput] = useState('');
@@ -100,9 +93,7 @@ export default function CalibrationWizardPage() {
       const filledPoints = standards.filter((s) => {
         const reading = s.readings[analyte];
         return (
-          reading !== undefined &&
-          typeof reading.signal === 'number' &&
-          !isNaN(reading.signal)
+          reading !== undefined && typeof reading.signal === 'number' && !isNaN(reading.signal)
         );
       });
       return filledPoints.length >= 3;
@@ -123,7 +114,7 @@ export default function CalibrationWizardPage() {
   const handleAddAnalyteWithSymbol = (rawSymbol: string) => {
     const raw = rawSymbol.trim();
     if (!raw) return;
-    
+
     const formatted = raw.charAt(0).toUpperCase() + raw.slice(1);
     if (analytes.includes(formatted)) {
       setSelectedAnalyte(formatted);
@@ -131,48 +122,8 @@ export default function CalibrationWizardPage() {
     }
 
     setAnalytes((prev) => [...prev, formatted]);
-
-    // const sensitivityMap: Record<string, { slope: number; intercept: number }> = {
-    //   Al: { slope: 2.0, intercept: 5.0 },
-    //   Cd: { slope: 12.0, intercept: 10.0 },
-    //   Mn: { slope: 20.0, intercept: 15.0 },
-    //   Pb: { slope: 10.0, intercept: 100.0 },
-    // };
-    // const sens = sensitivityMap[formatted] || { slope: 10.0, intercept: 10.0 };
-
-    // setStandards((prev) =>
-    //   prev.map((row) => ({
-    //     ...row,
-    //     readings: {
-    //       ...row.readings,
-    //       [formatted]: {
-    //         nominalConc: row.nominalConc,
-    //         signal:
-    //           row.nominalConc === 0
-    //             ? sens.intercept
-    //             : Number((row.nominalConc * sens.slope + sens.intercept).toFixed(1)),
-    //       },
-    //     },
-    //   }))
-    // );
-
-    // setSamples((prev) =>
-    //   prev.map((s) => ({
-    //     ...s,
-    //     readings: {
-    //       ...s.readings,
-    //       [formatted]:
-    //         s.type === 'blank_method'
-    //           ? Number((sens.intercept * 1.2).toFixed(1))
-    //           : Number((sens.slope * 15 + sens.intercept).toFixed(1)),
-    //     },
-    //   }))
-    // );
-
     setSelectedAnalyte((prev) => (prev ? prev : formatted));
   };
-
-  
 
   const handleQuickAddAnalyte = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -207,7 +158,7 @@ export default function CalibrationWizardPage() {
           delete readings[oldSymbol];
         }
         return { ...row, readings };
-      })
+      }),
     );
 
     setSamples((prev) =>
@@ -218,7 +169,7 @@ export default function CalibrationWizardPage() {
           delete readings[oldSymbol];
         }
         return { ...s, readings };
-      })
+      }),
     );
 
     if (selectedAnalyte === oldSymbol) {
@@ -236,7 +187,7 @@ export default function CalibrationWizardPage() {
         const readings = { ...row.readings };
         delete readings[symbol];
         return { ...row, readings };
-      })
+      }),
     );
 
     setSamples((prev) =>
@@ -244,7 +195,7 @@ export default function CalibrationWizardPage() {
         const readings = { ...s.readings };
         delete readings[symbol];
         return { ...s, readings };
-      })
+      }),
     );
 
     if (selectedAnalyte === symbol) {
@@ -299,15 +250,12 @@ export default function CalibrationWizardPage() {
   };
 
   const nonZeroLevels = selectedAnalyte
-    ? standards.filter(
-        (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) > 0
-      ).length
+    ? standards.filter((s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) > 0)
+        .length
     : 0;
 
   const hasBlank = selectedAnalyte
-    ? standards.some(
-        (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) === 0
-      )
+    ? standards.some((s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) === 0)
     : false;
 
   const isInvariantD1Pass = selectedAnalyte ? nonZeroLevels >= 5 && hasBlank : false;
@@ -350,7 +298,9 @@ export default function CalibrationWizardPage() {
             type="button"
             onClick={() => setStep(1)}
             className={`px-3 py-1 rounded-md font-medium transition-colors ${
-              step === 1 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              step === 1
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
             }`}
           >
             1. Metadata
@@ -365,8 +315,8 @@ export default function CalibrationWizardPage() {
               step === 2
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep2
-                ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
             }`}
           >
             {!canProceedToStep2 && <Lock className="w-2.5 h-2.5" />}
@@ -382,8 +332,8 @@ export default function CalibrationWizardPage() {
               step === 3
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep3
-                ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
             }`}
           >
             {!canProceedToStep3 && <Lock className="w-2.5 h-2.5" />}
@@ -394,25 +344,25 @@ export default function CalibrationWizardPage() {
 
       {step === 1 && (
         <MetadataWizard
-        editingAnalyte={editingAnalyte}
-        setEditingAnalyte={setEditingAnalyte}
-        title={title}
-        analytes={analytes}
-        handleRemoveAnalyte={handleRemoveAnalyte}
-        handleRenameAnalyte={handleRenameAnalyte}
-        inputMode={inputMode}
-        instrument={instrument}
-        onAddAnalyte={handleAddAnalyteWithSymbol}
-        setInputMode={setInputMode}
-        setInstrument={setInstrument}
-        setTitle={setTitle}
-        setUnit={setUnit}
-        unit={unit}
-        canProceedToStep2={canProceedToStep2}
-        setSignalUnit={setSignalUnit}
-        setStep={setStep}
-        signalUnit={signalUnit}
-       />
+          editingAnalyte={editingAnalyte}
+          setEditingAnalyte={setEditingAnalyte}
+          title={title}
+          analytes={analytes}
+          handleRemoveAnalyte={handleRemoveAnalyte}
+          handleRenameAnalyte={handleRenameAnalyte}
+          inputMode={inputMode}
+          instrument={instrument}
+          onAddAnalyte={handleAddAnalyteWithSymbol}
+          setInputMode={setInputMode}
+          setInstrument={setInstrument}
+          setTitle={setTitle}
+          setUnit={setUnit}
+          unit={unit}
+          canProceedToStep2={canProceedToStep2}
+          setSignalUnit={setSignalUnit}
+          setStep={setStep}
+          signalUnit={signalUnit}
+        />
       )}
 
       {step === 2 && (
@@ -425,7 +375,11 @@ export default function CalibrationWizardPage() {
                   Spreadsheet DataGrid Deret Standar (Multi-Elemen)
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Format Kolom: <code className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">Label | {analytes.join(' | ')}</code>. Blok di Excel &rarr; Ctrl+C &rarr; Ctrl+V ke dalam tabel.
+                  Format Kolom:{' '}
+                  <code className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Label | {analytes.join(' | ')}
+                  </code>
+                  . Blok di Excel &rarr; Ctrl+C &rarr; Ctrl+V ke dalam tabel.
                 </p>
               </div>
 
@@ -440,7 +394,10 @@ export default function CalibrationWizardPage() {
                       placeholder="Simbol analit..."
                       className="w-24 px-2 py-1 text-xs bg-white border border-slate-300 rounded font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
                     />
-                    <button type="submit" className="ml-1 text-slate-700 hover:text-slate-900 font-medium text-xs">
+                    <button
+                      type="submit"
+                      className="ml-1 text-slate-700 hover:text-slate-900 font-medium text-xs"
+                    >
                       + Tambah
                     </button>
                     <button
@@ -472,7 +429,7 @@ export default function CalibrationWizardPage() {
             )}
 
             <StandardDataGrid
-              unit = {unit}
+              unit={unit}
               standards={standards}
               analytes={analytes}
               onChange={setStandards}
@@ -497,7 +454,8 @@ export default function CalibrationWizardPage() {
                   </h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Pilih elemen analit di bawah untuk meninjau kurva kalibrasi regresi OLS, sensitivitas, dan batas deteksi:
+                  Pilih elemen analit di bawah untuk meninjau kurva kalibrasi regresi OLS,
+                  sensitivitas, dan batas deteksi:
                 </p>
               </div>
 
@@ -534,10 +492,13 @@ export default function CalibrationWizardPage() {
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-semibold">Peringatan Invariant D1 (ISO 17025) untuk {selectedAnalyte}</div>
+                  <div className="font-semibold">
+                    Peringatan Invariant D1 (ISO 17025) untuk {selectedAnalyte}
+                  </div>
                   <div className="text-[11px] text-amber-800 mt-0.5">
-                    Kurva linear wajib memiliki minimal 5 konsentrasi non-zero dan titik blanko (0 {unit}). Saat ini terdeteksi{' '}
-                    <strong>{nonZeroLevels} level non-zero</strong> {hasBlank ? '(dengan blanko)' : '(tanpa blanko 0 {unit})'}.
+                    Kurva linear wajib memiliki minimal 5 konsentrasi non-zero dan titik blanko (0{' '}
+                    {unit}). Saat ini terdeteksi <strong>{nonZeroLevels} level non-zero</strong>{' '}
+                    {hasBlank ? '(dengan blanko)' : '(tanpa blanko 0 {unit})'}.
                   </div>
                 </div>
               </div>
@@ -548,7 +509,8 @@ export default function CalibrationWizardPage() {
               <div className="lg:col-span-7 bg-slate-50/50 rounded-xl border border-slate-200 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-700 font-mono">
-                    Plot Kurva Kalibrasi: <strong className="text-slate-900">{selectedAnalyte || '-'}</strong>
+                    Plot Kurva Kalibrasi:{' '}
+                    <strong className="text-slate-900">{selectedAnalyte || '-'}</strong>
                   </span>
                   {activeRegression.reg && (
                     <span
@@ -571,12 +533,15 @@ export default function CalibrationWizardPage() {
                 <div className="h-64 w-full">
                   {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+                      <ComposedChart
+                        data={chartData}
+                        margin={{ top: 10, right: 10, bottom: 20, left: 10 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="nominal"
                           type="number"
-                          unit= {unit}
+                          unit={unit}
                           tick={{ fontSize: 10, fill: '#64748b' }}
                         />
                         <YAxis
@@ -586,14 +551,23 @@ export default function CalibrationWizardPage() {
                           tick={{ fontSize: 10, fill: '#64748b' }}
                         />
                         <Tooltip
-                          contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                          contentStyle={{
+                            fontSize: '11px',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                          }}
                           formatter={(value: any, name: any) => [
                             `${Number(value).toFixed(2)} cps`,
                             name === 'actualSignal' ? 'Signal Aktual' : 'Garis Regresi',
                           ]}
                           labelFormatter={(label: any) => `Konsentrasi: ${label} ${unit}`}
                         />
-                        <Scatter name="actualSignal" dataKey="actualSignal" fill="#0f172a" shape="circle" />
+                        <Scatter
+                          name="actualSignal"
+                          dataKey="actualSignal"
+                          fill="#0f172a"
+                          shape="circle"
+                        />
                         <Line
                           name="fittedSignal"
                           type="linear"
@@ -617,37 +591,49 @@ export default function CalibrationWizardPage() {
                 {activeRegression.reg ? (
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">Slope (m, sensitivitas)</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        Slope (m, sensitivitas)
+                      </div>
                       <div className="text-sm font-bold text-slate-900 mt-0.5">
                         {activeRegression.reg.slope.toFixed(4)}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">Intercept (c, sinyal 0)</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        Intercept (c, sinyal 0)
+                      </div>
                       <div className="text-sm font-bold text-slate-900 mt-0.5">
                         {activeRegression.reg.intercept.toFixed(4)}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">Korelasi (R&sup2;)</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        Korelasi (R&sup2;)
+                      </div>
                       <div className="text-sm font-bold text-slate-900 mt-0.5">
                         {activeRegression.reg.rSquared.toFixed(6)}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">Residual (sy/x)</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        Residual (sy/x)
+                      </div>
                       <div className="text-sm font-medium text-slate-800 mt-0.5">
                         {activeRegression.reg.syx.toFixed(4)}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">LOD Inst (3s/m, {unit})</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        LOD Inst (3s/m, {unit})
+                      </div>
                       <div className="text-sm font-semibold text-emerald-700 mt-0.5">
                         {activeRegression.lod.toFixed(3)}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                      <div className="text-[10px] text-slate-500 uppercase font-sans">LOQ Inst (10s/m, {unit})</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-sans">
+                        LOQ Inst (10s/m, {unit})
+                      </div>
                       <div className="text-sm font-semibold text-emerald-700 mt-0.5">
                         {activeRegression.loq.toFixed(3)}
                       </div>
@@ -685,17 +671,25 @@ export default function CalibrationWizardPage() {
                               key={a}
                               onClick={() => setSelectedAnalyte(a)}
                               className={`cursor-pointer transition-colors ${
-                                isSelected ? 'bg-slate-100 font-semibold text-slate-900' : 'hover:bg-slate-50 text-slate-700'
+                                isSelected
+                                  ? 'bg-slate-100 font-semibold text-slate-900'
+                                  : 'hover:bg-slate-50 text-slate-700'
                               }`}
                             >
                               <td className="py-1.5">{a}</td>
-                              <td className="py-1.5 text-right">{reg ? reg.slope.toFixed(2) : '-'}</td>
+                              <td className="py-1.5 text-right">
+                                {reg ? reg.slope.toFixed(2) : '-'}
+                              </td>
                               <td className="py-1.5 text-right">{reg ? reg.r.toFixed(4) : '-'}</td>
-                              <td className="py-1.5 text-right">{allRegressions[a]?.lod.toFixed(2) ?? '-'}</td>
+                              <td className="py-1.5 text-right">
+                                {allRegressions[a]?.lod.toFixed(2) ?? '-'}
+                              </td>
                               <td className="py-1.5 text-center">
                                 <span
                                   className={`inline-block px-1.5 py-0.2 rounded text-[10px] ${
-                                    isPass ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                    isPass
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-red-50 text-red-700'
                                   }`}
                                 >
                                   {isPass ? 'OK' : 'FAIL'}
@@ -751,7 +745,11 @@ export default function CalibrationWizardPage() {
                   Spreadsheet Sampel Pengujian (Maks 250 Baris &mdash; Invariant T2)
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Blok sel atau seluruh tabel di Excel lalu tempel (<kbd className="px-1 py-0.2 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">Ctrl+V</kbd>) langsung ke dalam grid.
+                  Blok sel atau seluruh tabel di Excel lalu tempel (
+                  <kbd className="px-1 py-0.2 rounded bg-slate-100 border border-slate-200 font-mono text-[10px]">
+                    Ctrl+V
+                  </kbd>
+                  ) langsung ke dalam grid.
                 </p>
               </div>
 

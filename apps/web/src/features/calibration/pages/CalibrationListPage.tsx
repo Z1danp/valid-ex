@@ -37,9 +37,10 @@ export default function CalibrationListPage() {
   const [batches, setBatches] = useState<BatchSummary[]>(INITIAL_BATCHES);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredBatches = batches.filter((b) =>
-    b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.instrument.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredBatches = batches.filter(
+    (b) =>
+      b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.instrument.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleDelete = (id: string, title: string) => {
@@ -52,7 +53,9 @@ export default function CalibrationListPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Riwayat Batch Kalibrasi</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Riwayat Batch Kalibrasi
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Manajemen pengujian kurva kalibrasi regresi OLS dan evaluasi kontrol mutu ISO 17025
           </p>
@@ -113,15 +116,16 @@ export default function CalibrationListPage() {
                   <td className="p-3 font-mono text-slate-600">
                     <div className="flex gap-1 flex-wrap">
                       {batch.analytes.map((a) => (
-                        <span key={a} className="px-1.5 py-0.5 rounded bg-slate-100 text-[11px] font-medium">
+                        <span
+                          key={a}
+                          className="px-1.5 py-0.5 rounded bg-slate-100 text-[11px] font-medium"
+                        >
                           {a}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="p-3 text-right font-mono text-slate-700">
-                    {batch.sampleCount}
-                  </td>
+                  <td className="p-3 text-right font-mono text-slate-700">{batch.sampleCount}</td>
                   <td className="p-3 text-center">
                     {batch.qcStatus === 'PASSED' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -135,9 +139,7 @@ export default function CalibrationListPage() {
                       </span>
                     )}
                   </td>
-                  <td className="p-3 font-mono text-slate-500 text-[11px]">
-                    {batch.createdAt}
-                  </td>
+                  <td className="p-3 font-mono text-slate-500 text-[11px]">{batch.createdAt}</td>
                   <td className="p-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <NavLink

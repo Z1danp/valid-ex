@@ -10,13 +10,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import {
-  AlertTriangle,
-  Download,
-  CheckCircle2,
-  ArrowLeft,
-  Filter,
-} from 'lucide-react';
+import { AlertTriangle, Download, CheckCircle2, ArrowLeft, Filter } from 'lucide-react';
 
 type AnalyteKey = 'Al' | 'Pb';
 
@@ -283,7 +277,9 @@ export default function CalibrationDetailPage() {
   }, [curve]);
 
   const handleDownload = (sampleId: string) => {
-    setDownloadToast(`Mengunduh lembar kerja ${sampleId}.xlsx (${selectedAnalyte}) dengan formula native Excel...`);
+    setDownloadToast(
+      `Mengunduh lembar kerja ${sampleId}.xlsx (${selectedAnalyte}) dengan formula native Excel...`,
+    );
     setTimeout(() => setDownloadToast(null), 4000);
   };
 
@@ -308,7 +304,8 @@ export default function CalibrationDetailPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 font-mono">
-            Instrumen: <strong>ICP-MS</strong> &bull; SOP: <strong>SOP-LAB-QC-01 Rev.1</strong> &bull; Tanggal Uji: 11 Nov 2026
+            Instrumen: <strong>ICP-MS</strong> &bull; SOP: <strong>SOP-LAB-QC-01 Rev.1</strong>{' '}
+            &bull; Tanggal Uji: 11 Nov 2026
           </p>
         </div>
 
@@ -392,7 +389,10 @@ export default function CalibrationDetailPage() {
         <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 flex items-center justify-between">
           <div className="flex items-center gap-2 font-medium">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Semua kriteria kontrol mutu untuk Timbal (Pb) memenuhi syarat SOP: CCV (100%), Spike (100%), RPD (1.0%).</span>
+            <span>
+              Semua kriteria kontrol mutu untuk Timbal (Pb) memenuhi syarat SOP: CCV (100%), Spike
+              (100%), RPD (1.0%).
+            </span>
           </div>
           <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold">
             QC PASSED (Pb)
@@ -413,8 +413,7 @@ export default function CalibrationDetailPage() {
             </div>
 
             <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <CheckCircle2 className="w-3 h-3" />
-              r = {curve.r.toFixed(6)}
+              <CheckCircle2 className="w-3 h-3" />r = {curve.r.toFixed(6)}
             </span>
           </div>
 
@@ -435,7 +434,11 @@ export default function CalibrationDetailPage() {
                   tick={{ fontSize: 10, fill: '#64748b' }}
                 />
                 <Tooltip
-                  contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                  contentStyle={{
+                    fontSize: '11px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                  }}
                   formatter={(value: any, name: any) => [
                     `${Number(value).toFixed(2)} cps`,
                     name === 'actualSignal' ? 'Signal Aktual' : 'Garis Regresi',
@@ -458,15 +461,23 @@ export default function CalibrationDetailPage() {
           <div className="grid grid-cols-3 gap-2.5 pt-1 text-xs font-mono">
             <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
               <div className="text-[10px] text-slate-500 uppercase font-sans">Slope (m)</div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5">{curve.slope.toFixed(4)}</div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {curve.slope.toFixed(4)}
+              </div>
             </div>
             <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
               <div className="text-[10px] text-slate-500 uppercase font-sans">Intercept (c)</div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5">{curve.intercept.toFixed(4)}</div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {curve.intercept.toFixed(4)}
+              </div>
             </div>
             <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
-              <div className="text-[10px] text-slate-500 uppercase font-sans">Korelasi (R&sup2;)</div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5">{curve.rSquared.toFixed(6)}</div>
+              <div className="text-[10px] text-slate-500 uppercase font-sans">
+                Korelasi (R&sup2;)
+              </div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {curve.rSquared.toFixed(6)}
+              </div>
             </div>
           </div>
         </div>
@@ -553,9 +564,13 @@ export default function CalibrationDetailPage() {
                   <td className="p-2.5 text-right">{row.weight.toFixed(4)}</td>
                   <td className="p-2.5 text-right">{row.volume}</td>
                   <td className="p-2.5 text-right">{row.df}</td>
-                  <td className="p-2.5 text-right font-medium text-slate-900">{row.signal.toFixed(1)}</td>
+                  <td className="p-2.5 text-right font-medium text-slate-900">
+                    {row.signal.toFixed(1)}
+                  </td>
                   <td className="p-2.5 text-right text-slate-700">{row.cRaw.toFixed(2)}</td>
-                  <td className="p-2.5 text-right font-medium text-slate-900">{row.cNet.toFixed(2)}</td>
+                  <td className="p-2.5 text-right font-medium text-slate-900">
+                    {row.cNet.toFixed(2)}
+                  </td>
                   <td className="p-2.5 text-center">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-medium ${

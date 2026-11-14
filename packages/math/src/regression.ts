@@ -25,40 +25,40 @@ import type { Point, Regression } from './types';
 export function linearRegression(points: Point[]): Regression {
   // check point length
   if (points.length < 3) {
-    throw new Error('Titik harus diatas 3')
+    throw new Error('Titik harus diatas 3');
   }
 
   // calculate mean
-  const n = points.length
-  const xMean = points.reduce((acc, p) => acc + p.x, 0) / n
-  const yMean = points.reduce((acc, p) => acc + p.y, 0) / n
+  const n = points.length;
+  const xMean = points.reduce((acc, p) => acc + p.x, 0) / n;
+  const yMean = points.reduce((acc, p) => acc + p.y, 0) / n;
 
   // calculate sum
-  let sxx = 0
-  let sxy = 0
-  let syy = 0
+  let sxx = 0;
+  let sxy = 0;
+  let syy = 0;
 
   for (const p of points) {
-    const dx = p.x - xMean
-    const dy = p.y - yMean
+    const dx = p.x - xMean;
+    const dy = p.y - yMean;
 
-    sxx += dx * dx
-    sxy += dx * dy
-    syy += dy * dy
+    sxx += dx * dx;
+    sxy += dx * dy;
+    syy += dy * dy;
   }
 
   // guard sxx
   if (sxx === 0) {
-    throw new Error('slope cannot be calculated, x value is constant')
+    throw new Error('slope cannot be calculated, x value is constant');
   }
 
-  const slope = sxy / sxx
-  const intercept = yMean - slope * xMean
-  const ssRes = syy - slope * sxy
-  const syx = Math.sqrt(ssRes / (n - 2))
-  const denom = Math.sqrt(sxx * syy)
-  const r = denom === 0 ? 0 : sxy / denom
-  const rSquared = r * r
+  const slope = sxy / sxx;
+  const intercept = yMean - slope * xMean;
+  const ssRes = syy - slope * sxy;
+  const syx = Math.sqrt(ssRes / (n - 2));
+  const denom = Math.sqrt(sxx * syy);
+  const r = denom === 0 ? 0 : sxy / denom;
+  const rSquared = r * r;
 
   return {
     n,
@@ -69,8 +69,8 @@ export function linearRegression(points: Point[]): Regression {
     syx,
     sxx,
     xMean,
-    yMean
-  }
+    yMean,
+  };
 }
 
 /**
@@ -78,30 +78,34 @@ export function linearRegression(points: Point[]): Regression {
  * Guard: panjang array harus sama & >= 2; denom 0 -> 0.
  */
 export function pearsonR(xs: number[], ys: number[]): number {
-  if (xs.length !== ys.length) { throw new Error('xs and ys must same length') }
-  if (xs.length < 2) throw new Error('pearsonR need at least 3 point')
+  if (xs.length !== ys.length) {
+    throw new Error('xs and ys must same length');
+  }
+  if (xs.length < 2) throw new Error('pearsonR need at least 3 point');
 
-  const n = xs.length
-  const xMean = xs.reduce((a, b) => a + b, 0) / n
-  const yMean = ys.reduce((a, b) => a + b, 0) / n
+  const n = xs.length;
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
 
-  let sxx = 0
-  let syy = 0
-  let sxy = 0
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
 
   for (let i = 0; i < n; i++) {
-    const dx = xs[i]! - xMean
-    const dy = ys[i]! - yMean
-    sxx += dx * dx
-    syy += dy * dy
-    sxy += dx * dy
+    const dx = xs[i]! - xMean;
+    const dy = ys[i]! - yMean;
+    sxx += dx * dx;
+    syy += dy * dy;
+    sxy += dx * dy;
   }
 
-  const denom = Math.sqrt(sxx * syy)
+  const denom = Math.sqrt(sxx * syy);
 
-  if (denom === 0) { return 0 }
+  if (denom === 0) {
+    return 0;
+  }
 
-  return sxy / denom
+  return sxy / denom;
 }
 
 /**
@@ -110,9 +114,8 @@ export function pearsonR(xs: number[], ys: number[]): number {
  * Throw bila kurang.
  */
 export function assertMinNonZeroLevels(points: Point[], minNonZeroLevels = 5): void {
-  const nonZeroLevels = points.filter((p) => p.x > 0).length
+  const nonZeroLevels = points.filter((p) => p.x > 0).length;
   if (nonZeroLevels < minNonZeroLevels) {
-    throw new Error(`Deret kalibrasi wajib punya minimal ${minNonZeroLevels} konsentrasi non-zero`)
+    throw new Error(`Deret kalibrasi wajib punya minimal ${minNonZeroLevels} konsentrasi non-zero`);
   }
-
 }

@@ -1,7 +1,7 @@
 # 🛡️ Valid-Ex Workspace Rules (AGENTS.md)
 
 Production engineering guidelines, domain invariants, and technical constraints for **Valid-Ex**:  
-*Auditable Statistical Calibration, Residual Diagnostics, & Native Formula Excel Engine for Analytical Chemistry (ISO/IEC 17025 & EURACHEM Compliant)*.
+_Auditable Statistical Calibration, Residual Diagnostics, & Native Formula Excel Engine for Analytical Chemistry (ISO/IEC 17025 & EURACHEM Compliant)_.
 
 ---
 

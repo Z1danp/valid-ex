@@ -87,24 +87,27 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
     const normalizedEmail = body.email.trim().toLowerCase();
     const existing = await deps.db.select().from(users).where(eq(users.email, normalizedEmail));
     if (existing.length > 0) {
-      return c.json({code: 'EMAIL_EXISTS', message: "Email already exists"}, 409)
-    } 
-    
-    const passwordHash = hashPassword(body.password)
-    
-    const insertedUser = await deps.db.insert(users).values({
-      email: normalizedEmail,
-      name: body.name,
-      passwordHash: passwordHash,
-      authProvider: 'local',
-    }).returning()
-    
-    const user = insertedUser[0]
-    if (!user) {
-      return c.json({code: 'INTERNAL_SERVER_ERROR', message: "Failed to insert user"}, 500)
+      return c.json({ code: 'EMAIL_EXISTS', message: 'Email already exists' }, 409);
     }
-    const token = await issueToken(user)
-    setAuthCookie(c, token)
+
+    const passwordHash = hashPassword(body.password);
+
+    const insertedUser = await deps.db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        name: body.name,
+        passwordHash: passwordHash,
+        authProvider: 'local',
+      })
+      .returning();
+
+    const user = insertedUser[0];
+    if (!user) {
+      return c.json({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to insert user' }, 500);
+    }
+    const token = await issueToken(user);
+    setAuthCookie(c, token);
     return c.json({ user: toUserProfile(user) }, 201);
   });
 
@@ -112,25 +115,28 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
   auth.post('/login', validateContract('json', LoginSchema), async (c) => {
     const body = c.req.valid('json');
     const normalizedEmail = body.email.trim().toLowerCase();
-    
+
     const userResult = await deps.db.select().from(users).where(eq(users.email, normalizedEmail));
-    const user = userResult[0]
-    
+    const user = userResult[0];
+
     if (!user) {
-      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401)
+      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401);
     }
-    
-    if(user.authProvider !== 'local' || !user.passwordHash) {
-      return c.json({ code: 'OAUTH_ACCOUNT_ONLY', message: 'This account is registered via Google OAuth.' }, 400)
+
+    if (user.authProvider !== 'local' || !user.passwordHash) {
+      return c.json(
+        { code: 'OAUTH_ACCOUNT_ONLY', message: 'This account is registered via Google OAuth.' },
+        400,
+      );
     }
-    
-    const isPasswordValid = verifyPassword(body.password, user.passwordHash)
+
+    const isPasswordValid = verifyPassword(body.password, user.passwordHash);
     if (!isPasswordValid) {
-      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401)
+      return c.json({ code: 'INVALID_CREDENTIALS', message: 'Wrong email or password.' }, 401);
     }
-    
-    const token = await issueToken(user)
-    setAuthCookie(c, token)
+
+    const token = await issueToken(user);
+    setAuthCookie(c, token);
     return c.json({ user: toUserProfile(user) }, 200);
   });
 
@@ -138,21 +144,24 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
   auth.post('/google', validateContract('json', GoogleAuthSchema), async (c) => {
     const { idToken } = c.req.valid('json');
     if (!deps.verifyGoogleToken) {
-      return c.json({ code: 'OAUTH_NOT_CONFIGURED', message: 'Google OAuth belum dikonfigurasi.' }, 401);
+      return c.json(
+        { code: 'OAUTH_NOT_CONFIGURED', message: 'Google OAuth belum dikonfigurasi.' },
+        401,
+      );
     }
 
     let googleProfile: GoogleTokenPayload;
     try {
       googleProfile = await deps.verifyGoogleToken(idToken);
     } catch {
-      return c.json({ code: 'INVALID_GOOGLE_TOKEN', message: 'Token Google OAuth tidak valid.' }, 401);
+      return c.json(
+        { code: 'INVALID_GOOGLE_TOKEN', message: 'Token Google OAuth tidak valid.' },
+        401,
+      );
     }
 
     const normalizedEmail = googleProfile.email.trim().toLowerCase();
-    const existing = await deps.db
-      .select()
-      .from(users)
-      .where(eq(users.email, normalizedEmail));
+    const existing = await deps.db.select().from(users).where(eq(users.email, normalizedEmail));
 
     let user = existing[0];
     if (!user) {
@@ -193,14 +202,14 @@ export function createAuthRoutes(deps: AuthRouteDeps) {
 
   // 5. GET /me (Protected by requireAuth middleware)
   auth.get('/me', requireAuth(deps.jwtSecret), async (c) => {
-    const userId = c.get('userId') as string
-    
+    const userId = c.get('userId') as string;
+
     const userResult = await deps.db.select().from(users).where(eq(users.id, userId));
-    const user = userResult[0]
+    const user = userResult[0];
     if (!user) {
-      return c.json({ code: 'UNAUTHORIZED', message: 'User not found.' }, 401)
+      return c.json({ code: 'UNAUTHORIZED', message: 'User not found.' }, 401);
     }
-    
+
     return c.json(toUserProfile(user), 200);
   });
 

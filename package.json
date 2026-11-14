@@ -12,9 +12,14 @@
     "test:math": "pnpm --filter @valid-ex/math test",
     "typecheck": "pnpm -r typecheck",
     "gen:contracts": "pnpm --filter @valid-ex/contracts gen",
-    "dev:web": "pnpm --filter @valid-ex/web dev"
+    "dev:web": "pnpm --filter @valid-ex/web dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "dotenv": "^18.0.8"
+  },
+  "devDependencies": {
+    "prettier": "^3.10.1"
   }
 }

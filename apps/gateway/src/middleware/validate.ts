@@ -7,10 +7,10 @@ import type { ZodSchema } from 'zod';
  * OpenAPI `ErrorResponse` contract (`{ code: 'VALIDATION_ERROR', message, details }`)
  * with HTTP 400.
  */
-export function validateContract<
-  Target extends keyof ValidationTargets,
-  Schema extends ZodSchema,
->(target: Target, schema: Schema) {
+export function validateContract<Target extends keyof ValidationTargets, Schema extends ZodSchema>(
+  target: Target,
+  schema: Schema,
+) {
   return zValidator(target, schema, (result, c) => {
     if (!result.success) {
       const details = result.error.issues.map(

@@ -17,7 +17,9 @@ describe('ccvRecovery (calibration standard check)', () => {
 
 describe('spikeRecovery (matrix spike)', () => {
   it('recovery = (spiked - unspiked) / spikeAdded * 100', () => {
-    expect(rel(spikeRecovery(110, 50, 50), QC_CASES.spike_110_unspiked_50_added_50)).toBeLessThan(1e-12);
+    expect(rel(spikeRecovery(110, 50, 50), QC_CASES.spike_110_unspiked_50_added_50)).toBeLessThan(
+      1e-12,
+    );
   });
 
   it('recovery bisa negatif bila spiked < unspiked', () => {
@@ -31,7 +33,9 @@ describe('spikeRecovery (matrix spike)', () => {
 
 describe('relativePercentDifference', () => {
   it('RPD = |s1 - s2| / mean * 100', () => {
-    expect(rel(relativePercentDifference(10, 10.2) as number, QC_CASES.rpd_10_vs_10_2)).toBeLessThan(1e-12);
+    expect(
+      rel(relativePercentDifference(10, 10.2) as number, QC_CASES.rpd_10_vs_10_2),
+    ).toBeLessThan(1e-12);
     expect(relativePercentDifference(10, 10)).toBe(0);
   });
 

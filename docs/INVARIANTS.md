@@ -31,7 +31,7 @@
   - **Tanpa override per batch**: analis hanya MEMILIH profil; tidak ada field kriteria di request batch.
   - **Profil default bersitasi** (SOP Lab "QC CRITERIA CHECK", rev 1): $r \ge 0.995$; CCV recovery $90.0\% - 110.0\%$; Spike recovery $60.0\% - 115.0\%$; RPD $\le 25.0\%$. Angka-angka ini adalah **isi profil**, bukan konstanta kode.
   - **Guard numerik**: bila rata-rata pasangan duplo $\le 0$, RPD adalah `null` (undefined), bukan `Infinity`/`NaN`.
-  - **Soft-Flag Invariant**: Kegagalan batas QC TIDAK MEMBLOKIR kalkulasi atau ekspor file Excel. Sistem WAJIB menyematkan status deviasi regulatori (`INVALID_QC` / `OOS_WARNING`) beserta `QCViolationRecord` (memuat `profileVersion` + `appliedCriteria`) yang tampak jelas pada UI dan dokumen Excel untuk kebutuhan investigasi *Out of Specification* (OOS) analis lab.
+  - **Soft-Flag Invariant**: Kegagalan batas QC TIDAK MEMBLOKIR kalkulasi atau ekspor file Excel. Sistem WAJIB menyematkan status deviasi regulatori (`INVALID_QC` / `OOS_WARNING`) beserta `QCViolationRecord` (memuat `profileVersion` + `appliedCriteria`) yang tampak jelas pada UI dan dokumen Excel untuk kebutuhan investigasi _Out of Specification_ (OOS) analis lab.
 - **Invariant D5 (Internal Full Precision vs Presentation Rounding)**:
   - Seluruh mesin hitung `@valid-ex/math` dan penyimpanan database wajib mempertahankan presisi penuh floating-point (IEEE 754 64-bit float / `double precision`) tanpa pembulatan di langkah perantara.
   - Pembulatan angka penting (significant figures / ASTM E29) hanya diterapkan pada **Presentation Layer** (tampilan UI DataGrid dan format sel Excel `numFmt`, misalnya `0.000`).
@@ -41,10 +41,10 @@
 ## 2. Architecture & Metrology Engine Invariants
 
 - **Invariant A1 (Design-First OpenAPI SSOT)**:
-  - File `contracts/openapi.yaml` adalah satu-satunya sumber kebenaran (*Single Source of Truth*) untuk semua skema data, endpoint, query parameter, dan DTO.
+  - File `contracts/openapi.yaml` adalah satu-satunya sumber kebenaran (_Single Source of Truth_) untuk semua skema data, endpoint, query parameter, dan DTO.
   - Dilarang membuat endpoint Hono atau antarmuka React yang menyimpang dari kontrak OpenAPI yang telah divalidasi.
 - **Invariant A2 (Isomorphic Determinism)**:
-  - `@valid-ex/math` adalah pustaka *zero-dependency* murni TypeScript yang dijalankan secara isomorfik di Browser (Client Live Preview) dan Vercel Serverless Gateway (Audit Validation).
+  - `@valid-ex/math` adalah pustaka _zero-dependency_ murni TypeScript yang dijalankan secara isomorfik di Browser (Client Live Preview) dan Vercel Serverless Gateway (Audit Validation).
   - Hasil kalkulasi OLS, $s_{y/x}$, LOD, LOQ, dan kuantifikasi di kedua lingkungan wajib deterministik dan menghasilkan output yang identik secara numerik (zero-drift).
 
 ---
@@ -57,11 +57,11 @@
   - **Tabular Scope**: Ekspor Excel difokuskan murni pada sel tabular terstruktur dan formula matematika native; tidak menggunakan native chart generator OpenXML untuk menjaga stabilitas dan efisiensi resource serverless.
 - **Invariant T2 (Serverless Bounded Memory & Batch Limits)**:
   - Satu batch pengujian dibatasi maksimal **250 baris sampel** per request.
-  - Pembuatan file Excel via `exceljs` dieksekusi secara in-memory (`workbook.xlsx.writeBuffer()`), dengan batas *heap spike* V8 maksimum $< 64 \text{ MB}$, menjamin eksekusi aman di dalam batas resource Vercel Serverless Function (512 MB – 1024 MB).
+  - Pembuatan file Excel via `exceljs` dieksekusi secara in-memory (`workbook.xlsx.writeBuffer()`), dengan batas _heap spike_ V8 maksimum $< 64 \text{ MB}$, menjamin eksekusi aman di dalam batas resource Vercel Serverless Function (512 MB – 1024 MB).
 - **Invariant T3 (Stateless Serverless / Zero Persistent Disk)**:
-  - API Gateway beroperasi secara murni *stateless*. Dilarang mengasumsikan ketersediaan disk lokal persisten atau background worker/cron daemon yang berjalan terus-menerus di server.
+  - API Gateway beroperasi secara murni _stateless_. Dilarang mengasumsikan ketersediaan disk lokal persisten atau background worker/cron daemon yang berjalan terus-menerus di server.
 - **Invariant T4 (Neon Serverless Connection Pooling)**:
-  - Akses database PostgreSQL di Neon wajib menggunakan adapter HTTP/WebSocket pooler (`@neondatabase/serverless`) melalui Drizzle ORM untuk mencegah kehabisan slot koneksi TCP (*connection starvation*) saat terjadi lonjakan eksekusi serverless konkuren.
+  - Akses database PostgreSQL di Neon wajib menggunakan adapter HTTP/WebSocket pooler (`@neondatabase/serverless`) melalui Drizzle ORM untuk mencegah kehabisan slot koneksi TCP (_connection starvation_) saat terjadi lonjakan eksekusi serverless konkuren.
 - **Invariant T5 (Auth DB Integrity & Null Password Bypass Guard)**:
   - Tabel `users` wajib dipagari oleh PostgreSQL `CHECK` constraint:
     ```sql
@@ -70,6 +70,6 @@
       (auth_provider != 'local')
     )
     ```
-  - Mencegah akun lokal tanpa password, serta mencegah pengambilalihan akun (*account takeover*) antara pendaftar manual dan Google OAuth.
+  - Mencegah akun lokal tanpa password, serta mencegah pengambilalihan akun (_account takeover_) antara pendaftar manual dan Google OAuth.
 - **Invariant T6 (ACID Transactional Persistence)**:
-  - Data kurva kalibrasi, deret standar, batch sampel, dan log audit wajib disimpan dalam satu batas transaksi ACID database yang utuh. Simpan parsial (*partial writes*) dilarang keras.
+  - Data kurva kalibrasi, deret standar, batch sampel, dan log audit wajib disimpan dalam satu batas transaksi ACID database yang utuh. Simpan parsial (_partial writes_) dilarang keras.

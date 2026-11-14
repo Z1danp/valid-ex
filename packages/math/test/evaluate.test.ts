@@ -118,11 +118,7 @@ describe('evaluateCalibration — skenario terkontrol mode raw_signal', () => {
 
   it('INDEPENDENSI MULTI-ANALIT (Invariant D2): hanya Al yang melanggar QC', () => {
     const rules = out.qcViolations.map((v) => `${v.rule}:${v.analyte}`).sort();
-    expect(rules).toEqual([
-      'CCV_RECOVERY:Al',
-      'DUPLICATE_RPD:Al',
-      'SPIKE_RECOVERY:Al',
-    ]);
+    expect(rules).toEqual(['CCV_RECOVERY:Al', 'DUPLICATE_RPD:Al', 'SPIKE_RECOVERY:Al']);
     expect(out.qcStatus).toBe('INVALID_QC');
   });
 
@@ -187,7 +183,14 @@ describe('evaluateCalibration — LOD/LOQ metode PER-SAMPEL', () => {
     analytes: ['Al'],
     standards,
     samples: [
-      { sampleId: 'MB', sampleType: 'blank_method', weight: 0.2, volume: 50, df: 1, readings: { Al: sig(5) } },
+      {
+        sampleId: 'MB',
+        sampleType: 'blank_method',
+        weight: 0.2,
+        volume: 50,
+        df: 1,
+        readings: { Al: sig(5) },
+      },
       mk('W02', 0.2),
       mk('W05', 0.5),
     ],
@@ -201,9 +204,15 @@ describe('evaluateCalibration — LOD/LOQ metode PER-SAMPEL', () => {
 
   it('lodMethod/loqMethod berskala 1/berat', () => {
     // ppb -> mg/kg: lodMethod = lodInstrument * V / (W * 1000)
-    expect(rel(row('W02').analytes.Al!.lodMethod, (lodInst * 50) / (0.2 * 1000))).toBeLessThan(1e-9);
-    expect(rel(row('W05').analytes.Al!.lodMethod, (lodInst * 50) / (0.5 * 1000))).toBeLessThan(1e-9);
-    expect(rel(row('W02').analytes.Al!.loqMethod, (loqInst * 50) / (0.2 * 1000))).toBeLessThan(1e-9);
+    expect(rel(row('W02').analytes.Al!.lodMethod, (lodInst * 50) / (0.2 * 1000))).toBeLessThan(
+      1e-9,
+    );
+    expect(rel(row('W05').analytes.Al!.lodMethod, (lodInst * 50) / (0.5 * 1000))).toBeLessThan(
+      1e-9,
+    );
+    expect(rel(row('W02').analytes.Al!.loqMethod, (loqInst * 50) / (0.2 * 1000))).toBeLessThan(
+      1e-9,
+    );
   });
 });
 
@@ -215,7 +224,12 @@ describe('evaluateCalibration — validasi & soft-flag', () => {
     });
     const input: CalibrationInput = {
       ...batch([
-        { sampleId: 'S', sampleType: 'sample', ...base, readings: { Al: AL(11), Pb: PB(12), Cr: 5 } },
+        {
+          sampleId: 'S',
+          sampleType: 'sample',
+          ...base,
+          readings: { Al: AL(11), Pb: PB(12), Cr: 5 },
+        },
       ]),
       analytes: ['Al', 'Pb', 'Cr'],
       standards,

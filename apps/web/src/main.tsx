@@ -24,5 +24,5 @@ if (!document.getElementById('portal')) {
 createRoot(rootElement).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );

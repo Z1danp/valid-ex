@@ -15,8 +15,8 @@ Pada Milestone 1, kriteria QC dispesifikasikan sebagai **angka tetap** di dalam 
 Namun muncul temuan bahwa **kriteria penerimaan QC bervariasi**, dan yang lebih penting: kriteria adalah
 **kebijakan laboratorium/metode**, bukan konstanta aplikasi. Sumber primer memverifikasi hal ini:
 
-- **EPA SW-846 (Chapter One / 6020B)**: *"Most promulgated EPA methods have defined acceptance criteria that must be met... Where method defined acceptance criteria don't exist, the laboratory must determine its own criteria... calculate the upper and lower control limits from the mean and standard deviation of percent recovery for at least 20 data points."*
-- **EPA 6020B**: *"historically derived acceptance limits must not exceed ±20% of the target element spike values."*
+- **EPA SW-846 (Chapter One / 6020B)**: _"Most promulgated EPA methods have defined acceptance criteria that must be met... Where method defined acceptance criteria don't exist, the laboratory must determine its own criteria... calculate the upper and lower control limits from the mean and standard deviation of percent recovery for at least 20 data points."_
+- **EPA 6020B**: _"historically derived acceptance limits must not exceed ±20% of the target element spike values."_
 - **AOAC Appendix F Table A5**: rentang recovery yang diterima **melebar saat konsentrasi menurun** (level-dependent).
 - **USACE EM 200-1-10**: CCV mid-level 90–110%, tetapi **low-level CCV 85–115%**.
 - **SOP lab pengguna** ("QC CRITERIA CHECK") justru **flat**: r ≥ 0.995; calibration standard check recovery 100 ± 10%; sample & QC spike recovery 60–115%; RPD ≤ 25%.
@@ -39,16 +39,17 @@ ISO/IEC 17025 (kriteria harus terdokumentasi, terlacak, dan reproducible). Dibut
 ## 3. Considered Options
 
 - **Opsi A: Free-form kriteria per batch (analis mengetik angka)**
-  - *Kelebihan*: fleksibel maksimal.
-  - *Kekurangan*: menghancurkan reproducibility audit, rawan manipulasi, tidak dapat dipertahankan di hadapan auditor.
+  - _Kelebihan_: fleksibel maksimal.
+  - _Kekurangan_: menghancurkan reproducibility audit, rawan manipulasi, tidak dapat dipertahankan di hadapan auditor.
 - **Opsi B: Kriteria hardcoded di aplikasi (status quo Milestone 1)**
-  - *Kelebihan*: sederhana & deterministik.
-  - *Kekurangan*: melanggar fakta bahwa kriteria adalah kebijakan lab/metode; setiap perubahan SOP = rilis kode baru.
+  - _Kelebihan_: sederhana & deterministik.
+  - _Kekurangan_: melanggar fakta bahwa kriteria adalah kebijakan lab/metode; setiap perubahan SOP = rilis kode baru.
 - **Opsi C: Governed versioned profile (Dipilih)**
-  - *Kelebihan*: kriteria dideklarasikan sebagai profil bernama + ber-versi + bersitasi; analis hanya MEMILIH; profil di-snapshot immutable ke batch; perubahan angka = versi baru.
-  - *Kekurangan*: menambah entitas DB, endpoint, dan kompleksitas resolver.
+  - _Kelebihan_: kriteria dideklarasikan sebagai profil bernama + ber-versi + bersitasi; analis hanya MEMILIH; profil di-snapshot immutable ke batch; perubahan angka = versi baru.
+  - _Kekurangan_: menambah entitas DB, endpoint, dan kompleksitas resolver.
 
 ### Sub-keputusan: struktur kriteria
+
 - Per analit (Invariant D2) **dan** per tipe QC, dengan **band** rentang konsentrasi.
 - Band **absolut** dalam `solutionConcUnit`; kriteria flat = **satu band catch-all** (`maxConc: null`).
 - **Tanpa override** per batch.
@@ -56,6 +57,7 @@ ISO/IEC 17025 (kriteria harus terdokumentasi, terlacak, dan reproducible). Dibut
 - **Tanpa** kriteria blanko (SOP tidak mendefinisikannya).
 
 ### Sub-keputusan: pemilih band
+
 - CCV → `expectedConc` (target diketahui a priori).
 - Spike → `spikeAdded` (level spike diketahui a priori).
 - Duplo → rata-rata `C_net` terukur.
@@ -67,6 +69,7 @@ ISO/IEC 17025 (kriteria harus terdokumentasi, terlacak, dan reproducible). Dibut
 Memilih **Opsi C: Governed Versioned QC Criteria Profiles**.
 
 ### Aturan Arsitektural (invariants baru):
+
 1. `CalibrationBatchRequest` **wajib** menyertakan `qcProfileId`. Field `qcCriteria` inline dihapus.
 2. Profil **immutable**; perubahan angka menghasilkan `version` baru.
 3. Batch menyimpan **`qcProfileSnapshot`** (salinan kriteria yang benar-benar diterapkan) + `qcProfileRef {id, version}`.

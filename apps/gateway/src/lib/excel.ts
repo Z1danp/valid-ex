@@ -46,12 +46,12 @@ export function computeUnitConversionFactor(units: MetrologyUnits): number {
  * maka tambahkan tanda petik tunggal di AWAL string: `` `'${value}` ``.
  * Selain itu, kembalikan `value` apa adanya.
  */
-  const prefix = new Set(['=', '+', '-', '\t', '\r', '@'])
+const prefix = new Set(['=', '+', '-', '\t', '\r', '@']);
 export function sanitizeExcelText(value: string | null | undefined): string {
   if (!value) return '';
   // Tulis logika sanitasimu di sini:
   if (prefix.has(value[0]!)) {
-    return `'${value}`
+    return `'${value}`;
   } else return value;
 }
 
@@ -93,7 +93,10 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
     'QC Profile',
     `${sanitizeExcelText(calibration.qcProfileSnapshot.name)} (v${calibration.qcProfileVersion})`,
   ]);
-  summarySheet.addRow(['Method Reference', sanitizeExcelText(calibration.qcProfileSnapshot.methodRef)]);
+  summarySheet.addRow([
+    'Method Reference',
+    sanitizeExcelText(calibration.qcProfileSnapshot.methodRef),
+  ]);
   summarySheet.addRow(['Regulatory QC Status', statusBanner]);
   summarySheet.addRow([]);
 
@@ -105,7 +108,9 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
     `Weight (${calibration.units.weightUnit})`,
     `Volume (${calibration.units.volumeUnit})`,
     'dF',
-    ...calibration.analytes.map((a) => `${sanitizeExcelText(a)} (${calibration.units.solidResultUnit})`),
+    ...calibration.analytes.map(
+      (a) => `${sanitizeExcelText(a)} (${calibration.units.solidResultUnit})`,
+    ),
   ]);
 
   const targetRowNumberInCurve = parentSample ? 18 : 17;
@@ -135,8 +140,10 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
     const sheet = workbook.addWorksheet(`Curve_${analyte}`);
     const metrics = calibration.analytesSummary[analyte]!;
 
-    sheet.getCell('A1').value = `Analyte Calibration & Quantification: ${sanitizeExcelText(analyte)}`;
-    sheet.getCell('A2').value = `Solution Unit: ${calibration.units.solutionConcUnit} | Solid Unit: ${calibration.units.solidResultUnit}`;
+    sheet.getCell('A1').value =
+      `Analyte Calibration & Quantification: ${sanitizeExcelText(analyte)}`;
+    sheet.getCell('A2').value =
+      `Solution Unit: ${calibration.units.solutionConcUnit} | Solid Unit: ${calibration.units.solidResultUnit}`;
 
     // Header Deret Standar (Baris 4)
     sheet.getCell('A4').value = 'Standard Name';
@@ -163,7 +170,10 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
     sheet.getCell('F5').value = { formula: `SLOPE(${yRange},${xRange})`, result: metrics.slope };
 
     sheet.getCell('E6').value = 'Intercept (c)';
-    sheet.getCell('F6').value = { formula: `INTERCEPT(${yRange},${xRange})`, result: metrics.intercept };
+    sheet.getCell('F6').value = {
+      formula: `INTERCEPT(${yRange},${xRange})`,
+      result: metrics.intercept,
+    };
 
     sheet.getCell('E7').value = 'Correlation (r)';
     sheet.getCell('F7').value = { formula: `CORREL(${yRange},${xRange})`, result: metrics.r };
@@ -220,8 +230,7 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
       sheet.getCell(`E${r}`).value = readingVal;
 
       // F: C_raw
-      const cRawFormula =
-        calibration.inputMode === 'raw_signal' ? `(E${r}-$F$6)/$F$5` : `E${r}`;
+      const cRawFormula = calibration.inputMode === 'raw_signal' ? `(E${r}-$F$6)/$F$5` : `E${r}`;
       sheet.getCell(`F${r}`).value = { formula: cRawFormula, result: evalRes.cRaw };
 
       // G: C_net = C_raw - C_blank

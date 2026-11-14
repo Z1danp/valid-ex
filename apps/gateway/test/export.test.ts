@@ -65,7 +65,9 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
     expect(sanitizeExcelText("=CMD|'/C calc'!A0")).toBe("'=CMD|'/C calc'!A0");
     expect(sanitizeExcelText('+SUM(A1:A10)')).toBe("'+SUM(A1:A10)");
     expect(sanitizeExcelText('-10+20')).toBe("'-10+20");
-    expect(sanitizeExcelText('@HYPERLINK("http://evil.com")')).toBe("'@HYPERLINK(\"http://evil.com\")");
+    expect(sanitizeExcelText('@HYPERLINK("http://evil.com")')).toBe(
+      '\'@HYPERLINK("http://evil.com")',
+    );
     expect(sanitizeExcelText('Sample Normal 101')).toBe('Sample Normal 101');
   });
 
@@ -94,12 +96,45 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
         qcProfileId: profile.id,
         analytes: ['Pb', 'Cd'],
         standards: [
-          { standardName: 'Blank', readings: { Pb: { nominalConc: 0, signal: 10 }, Cd: { nominalConc: 0, signal: 5 } } },
-          { standardName: 'Std 1', readings: { Pb: { nominalConc: 1, signal: 1010 }, Cd: { nominalConc: 0.5, signal: 505 } } },
-          { standardName: 'Std 2', readings: { Pb: { nominalConc: 2, signal: 2010 }, Cd: { nominalConc: 1.0, signal: 1005 } } },
-          { standardName: 'Std 3', readings: { Pb: { nominalConc: 5, signal: 5010 }, Cd: { nominalConc: 2.5, signal: 2505 } } },
-          { standardName: 'Std 4', readings: { Pb: { nominalConc: 10, signal: 10010 }, Cd: { nominalConc: 5.0, signal: 5005 } } },
-          { standardName: 'Std 5', readings: { Pb: { nominalConc: 20, signal: 20010 }, Cd: { nominalConc: 10.0, signal: 10005 } } },
+          {
+            standardName: 'Blank',
+            readings: { Pb: { nominalConc: 0, signal: 10 }, Cd: { nominalConc: 0, signal: 5 } },
+          },
+          {
+            standardName: 'Std 1',
+            readings: {
+              Pb: { nominalConc: 1, signal: 1010 },
+              Cd: { nominalConc: 0.5, signal: 505 },
+            },
+          },
+          {
+            standardName: 'Std 2',
+            readings: {
+              Pb: { nominalConc: 2, signal: 2010 },
+              Cd: { nominalConc: 1.0, signal: 1005 },
+            },
+          },
+          {
+            standardName: 'Std 3',
+            readings: {
+              Pb: { nominalConc: 5, signal: 5010 },
+              Cd: { nominalConc: 2.5, signal: 2505 },
+            },
+          },
+          {
+            standardName: 'Std 4',
+            readings: {
+              Pb: { nominalConc: 10, signal: 10010 },
+              Cd: { nominalConc: 5.0, signal: 5005 },
+            },
+          },
+          {
+            standardName: 'Std 5',
+            readings: {
+              Pb: { nominalConc: 20, signal: 20010 },
+              Cd: { nominalConc: 10.0, signal: 10005 },
+            },
+          },
         ],
         samples: [
           {
@@ -133,7 +168,9 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
 
     expect(calRes.status).toBe(201);
     const batch = await calRes.json();
-    const targetSampleRow = batch.evaluatedSamples.find((s: { sampleId: string }) => s.sampleId === '=S-101-Target');
+    const targetSampleRow = batch.evaluatedSamples.find(
+      (s: { sampleId: string }) => s.sampleId === '=S-101-Target',
+    );
 
     const exportRes = await app.request(
       `/api/v1/calibrations/${batch.id}/samples/${targetSampleRow.id}/export`,
