@@ -31,6 +31,12 @@ import { SampleDataGrid, type SampleRowState } from '../components/SampleDataGri
 import type { components } from '@valid-ex/contracts';
 import MetadataWizard from '../components/MetadataWizard';
 
+  type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
+  type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit'];
+  type InputMode = components['schemas']['InputMode'];
+  type Instrument = components['schemas']['InstrumentType']
+
+
 
 
 const INITIAL_ANALYTES: string[] = [];
@@ -61,9 +67,7 @@ const INITIAL_SAMPLES: SampleRowState[] = [
 
 export default function CalibrationWizardPage() {
   
-  type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
-  type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit']
-  type Instrument = components['schemas']['CalibrationBatchRequest']['instrument']
+
   
   /// state section
   const navigate = useNavigate();
@@ -71,7 +75,7 @@ export default function CalibrationWizardPage() {
 
   const [title, setTitle] = useState('Pengujian ICP-MS Logam Berat Beras Putih');
   const [instrument, setInstrument] = useState<Instrument>('ICP-MS');
-  const [inputMode, setInputMode] = useState<'raw_signal' | 'in_vial_concentration'>('raw_signal');
+  const [inputMode, setInputMode] = useState<InputMode>('raw_signal');
   const [unit, setUnit] = useState<SolutionConcUnit>('ppm')
   const [signalUnit, setSignalUnit] = useState<SignalUnit>('cps')
 
