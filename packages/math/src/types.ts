@@ -13,7 +13,7 @@ export type SolutionConcUnit = 'ppt' | 'ppb' | 'ppm';
 export type SolidResultUnit = 'ug/kg' | 'mg/kg' | 'percent';
 export type WeightUnit = 'g' | 'mg';
 export type VolumeUnit = 'mL' | 'L';
-export type SignalUnit = 'cps' | 'intensity' | 'peak_area';
+export type SignalUnit = 'cps' | 'intensity' | 'peak_area' | 'abs';
 
 export type InputMode = 'raw_signal' | 'in_vial_concentration';
 export type SampleType = 'sample' | 'blank_method' | 'ccv' | 'spike' | 'duplicate';

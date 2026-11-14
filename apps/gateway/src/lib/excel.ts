@@ -190,7 +190,7 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
       `Weight (${calibration.units.weightUnit})`,
       `Volume (${calibration.units.volumeUnit})`,
       'dF',
-      'Instrument Reading',
+      `Instrument Reading (${calibration.inputMode === 'raw_signal' ? calibration.units.signalUnit : calibration.units.solutionConcUnit})`,
       `C_raw (${calibration.units.solutionConcUnit})`,
       `C_net (${calibration.units.solutionConcUnit})`,
       `LOQ Method (${calibration.units.solidResultUnit})`,

@@ -292,7 +292,7 @@ export interface components {
              * @example cps
              * @enum {string}
              */
-            signalUnit: "cps" | "intensity" | "peak_area";
+            signalUnit: "cps" | "intensity" | "peak_area" | "abs";
         };
         /**
          * @description - sample: sampel uji rutin lab

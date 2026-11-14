@@ -29,7 +29,7 @@ const MetrologyUnitsSchema: z.ZodType<components['schemas']['MetrologyUnits']> =
   solidResultUnit: z.enum(['mg/kg', 'ug/kg', 'percent']),
   weightUnit: z.enum(['g', 'mg']),
   volumeUnit: z.enum(['mL', 'L']),
-  signalUnit: z.enum(['cps', 'intensity', 'peak_area']),
+  signalUnit: z.enum(['cps', 'intensity', 'peak_area', 'abs']),
 });
 
 const StandardPointReadingSchema: z.ZodType<components['schemas']['StandardPointReading']> =

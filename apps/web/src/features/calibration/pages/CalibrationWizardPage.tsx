@@ -31,6 +31,7 @@ import { SampleDataGrid, type SampleRowState } from '../components/SampleDataGri
 import type { components } from '@valid-ex/contracts';
 
 type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
+type signalUnit = components['schemas']['MetrologyUnits']['signalUnit']
 
 const INITIAL_ANALYTES: string[] = [];
 
@@ -59,6 +60,7 @@ const INITIAL_SAMPLES: SampleRowState[] = [
 ];
 
 export default function CalibrationWizardPage() {
+  /// state section
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -66,6 +68,7 @@ export default function CalibrationWizardPage() {
   const [instrument, setInstrument] = useState('ICP-MS');
   const [inputMode, setInputMode] = useState<'raw_signal' | 'in_vial_concentration'>('raw_signal');
   const [unit, setUnit] = useState<SolutionConcUnit>('ppm')
+  const [signalUnit, setSignalUnit] = useState<signalUnit>('cps')
 
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
   const [newAnalyteInput, setNewAnalyteInput] = useState('');
@@ -425,11 +428,24 @@ export default function CalibrationWizardPage() {
                     onChange={(e) => setInputMode(e.target.value as 'raw_signal' | 'in_vial_concentration')}
                     className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
                   >
-                    <option value="raw_signal">Raw Signal (cps/area)</option>
+                    <option value="raw_signal">Raw Signal</option>
                     <option value="in_vial_concentration">In-Vial Concentration</option>
                   </select>
                 </div>
               </div>
+
+              
+                <div className='space-y-1.5'>
+                <label className='text-xs font-medium text-slate-700'>Raw Signal Unit</label>
+                <select
+                value={signalUnit}
+                onChange={(e) => setSignalUnit(e.target.value as signalUnit)}
+                 className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900">
+                  <option value="cps">cps</option>
+                  <option value="abs">absorbance</option>
+                </select>
+              </div>
+              
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-700">Profil Kriteria QC (SOP)</label>

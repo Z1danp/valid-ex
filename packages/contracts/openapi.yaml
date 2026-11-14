@@ -561,7 +561,7 @@ components:
           example: "mL"
         signalUnit:
           type: string
-          enum: [cps, intensity, peak_area]
+          enum: [cps, intensity, peak_area, abs]
           description: "Satuan pembacaan respon detektor. WAJIB, karena deret standar selalu menggunakan signal pada kedua inputMode."
           example: "cps"
 
