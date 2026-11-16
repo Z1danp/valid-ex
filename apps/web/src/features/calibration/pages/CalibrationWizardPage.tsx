@@ -19,19 +19,18 @@ import {
   Plus,
   FileSpreadsheet,
   X,
-  Info,
-  Edit2,
   Activity,
   Layers,
   Lock,
 } from 'lucide-react';
 import { StandardDataGrid, type StandardRowItem } from '../components/StandardDataGrid';
 import { SampleDataGrid, type SampleRowState } from '../components/SampleDataGrid';
-
-import type { components } from '@valid-ex/contracts';
-
-type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
-type signalUnit = components['schemas']['MetrologyUnits']['signalUnit']
+import MetadataWizard, {
+  type InstrumentType,
+  type InputMode,
+  type SolutionConcUnit,
+  type SignalUnit,
+} from '../components/MetadataWizard';
 
 const INITIAL_ANALYTES: string[] = [];
 
@@ -65,14 +64,12 @@ export default function CalibrationWizardPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [title, setTitle] = useState('Pengujian ICP-MS Logam Berat Beras Putih');
-  const [instrument, setInstrument] = useState('ICP-MS');
-  const [inputMode, setInputMode] = useState<'raw_signal' | 'in_vial_concentration'>('raw_signal');
-  const [unit, setUnit] = useState<SolutionConcUnit>('ppm')
-  const [signalUnit, setSignalUnit] = useState<signalUnit>('cps')
+  const [instrument, setInstrument] = useState<InstrumentType>('ICP-MS');
+  const [inputMode, setInputMode] = useState<InputMode>('raw_signal');
+  const [unit, setUnit] = useState<SolutionConcUnit>('ppm');
+  const [signalUnit, setSignalUnit] = useState<SignalUnit>('cps');
 
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
-  const [newAnalyteInput, setNewAnalyteInput] = useState('');
-  const [editingAnalyte, setEditingAnalyte] = useState<string | null>(null);
 
   const [selectedAnalyte, setSelectedAnalyte] = useState<string>('');
   const [quickAddAnalyteInput, setQuickAddAnalyteInput] = useState('');
@@ -114,7 +111,7 @@ export default function CalibrationWizardPage() {
   const handleAddAnalyteWithSymbol = (rawSymbol: string) => {
     const raw = rawSymbol.trim();
     if (!raw) return;
-    
+
     const formatted = raw.charAt(0).toUpperCase() + raw.slice(1);
     if (analytes.includes(formatted)) {
       setSelectedAnalyte(formatted);
@@ -122,51 +119,7 @@ export default function CalibrationWizardPage() {
     }
 
     setAnalytes((prev) => [...prev, formatted]);
-
-    // const sensitivityMap: Record<string, { slope: number; intercept: number }> = {
-    //   Al: { slope: 2.0, intercept: 5.0 },
-    //   Cd: { slope: 12.0, intercept: 10.0 },
-    //   Mn: { slope: 20.0, intercept: 15.0 },
-    //   Pb: { slope: 10.0, intercept: 100.0 },
-    // };
-    // const sens = sensitivityMap[formatted] || { slope: 10.0, intercept: 10.0 };
-
-    // setStandards((prev) =>
-    //   prev.map((row) => ({
-    //     ...row,
-    //     readings: {
-    //       ...row.readings,
-    //       [formatted]: {
-    //         nominalConc: row.nominalConc,
-    //         signal:
-    //           row.nominalConc === 0
-    //             ? sens.intercept
-    //             : Number((row.nominalConc * sens.slope + sens.intercept).toFixed(1)),
-    //       },
-    //     },
-    //   }))
-    // );
-
-    // setSamples((prev) =>
-    //   prev.map((s) => ({
-    //     ...s,
-    //     readings: {
-    //       ...s.readings,
-    //       [formatted]:
-    //         s.type === 'blank_method'
-    //           ? Number((sens.intercept * 1.2).toFixed(1))
-    //           : Number((sens.slope * 15 + sens.intercept).toFixed(1)),
-    //     },
-    //   }))
-    // );
-
     setSelectedAnalyte((prev) => (prev ? prev : formatted));
-  };
-
-  const handleAddAnalyte = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    handleAddAnalyteWithSymbol(newAnalyteInput);
-    setNewAnalyteInput('');
   };
 
   const handleQuickAddAnalyte = (e?: React.FormEvent) => {
@@ -179,12 +132,10 @@ export default function CalibrationWizardPage() {
   const handleRenameAnalyte = (oldSymbol: string, newSymbolRaw: string) => {
     const clean = newSymbolRaw.trim();
     if (!clean) {
-      setEditingAnalyte(null);
       return;
     }
     const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
     if (formatted === oldSymbol) {
-      setEditingAnalyte(null);
       return;
     }
     if (analytes.includes(formatted)) {
@@ -219,7 +170,6 @@ export default function CalibrationWizardPage() {
     if (selectedAnalyte === oldSymbol) {
       setSelectedAnalyte(formatted);
     }
-    setEditingAnalyte(null);
   };
 
   const handleRemoveAnalyte = (symbol: string) => {
@@ -295,14 +245,14 @@ export default function CalibrationWizardPage() {
 
   const nonZeroLevels = selectedAnalyte
     ? standards.filter(
-        (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) > 0
-      ).length
+      (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) > 0
+    ).length
     : 0;
 
   const hasBlank = selectedAnalyte
     ? standards.some(
-        (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) === 0
-      )
+      (s) => (s.readings[selectedAnalyte]?.nominalConc ?? s.nominalConc) === 0
+    )
     : false;
 
   const isInvariantD1Pass = selectedAnalyte ? nonZeroLevels >= 5 && hasBlank : false;
@@ -344,9 +294,8 @@ export default function CalibrationWizardPage() {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className={`px-3 py-1 rounded-md font-medium transition-colors ${
-              step === 1 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1 rounded-md font-medium transition-colors ${step === 1 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
           >
             1. Metadata
           </button>
@@ -356,13 +305,12 @@ export default function CalibrationWizardPage() {
             onClick={() => canProceedToStep2 && setStep(2)}
             disabled={!canProceedToStep2}
             title={!canProceedToStep2 ? 'Tambahkan minimal 1 analit terlebih dahulu' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${
-              step === 2
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${step === 2
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep2
-                ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
-            }`}
+                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+              }`}
           >
             {!canProceedToStep2 && <Lock className="w-2.5 h-2.5" />}
             2. Standar
@@ -373,13 +321,12 @@ export default function CalibrationWizardPage() {
             onClick={() => canProceedToStep3 && setStep(3)}
             disabled={!canProceedToStep3}
             title={!canProceedToStep3 ? 'Lengkapi deret standar terlebih dahulu' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${
-              step === 3
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${step === 3
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep3
-                ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
-            }`}
+                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+              }`}
           >
             {!canProceedToStep3 && <Lock className="w-2.5 h-2.5" />}
             3. Sampel
@@ -388,199 +335,24 @@ export default function CalibrationWizardPage() {
       </div>
 
       {step === 1 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 shadow-xs">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                Informasi Pengujian
-              </h2>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Judul Batch Kalibrasi</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 font-sans"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">Instrumen</label>
-                  <select
-                    value={instrument}
-                    onChange={(e) => setInstrument(e.target.value)}
-                    className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  >
-                    <option value="ICP-MS">ICP-MS</option>
-                    <option value="ICP-OES">ICP-OES</option>
-                    <option value="AAS">AAS</option>
-                    <option value="HPLC">HPLC</option>
-                    <option value="GC-MS">GC-MS</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">Input Mode</label>
-                  <select
-                    value={inputMode}
-                    onChange={(e) => setInputMode(e.target.value as 'raw_signal' | 'in_vial_concentration')}
-                    className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  >
-                    <option value="raw_signal">Raw Signal</option>
-                    <option value="in_vial_concentration">In-Vial Concentration</option>
-                  </select>
-                </div>
-              </div>
-
-              
-                <div className='space-y-1.5'>
-                <label className='text-xs font-medium text-slate-700'>Raw Signal Unit</label>
-                <select
-                value={signalUnit}
-                onChange={(e) => setSignalUnit(e.target.value as signalUnit)}
-                 className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900">
-                  <option value="cps">cps</option>
-                  <option value="abs">absorbance</option>
-                </select>
-              </div>
-              
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Profil Kriteria QC (SOP)</label>
-                <select className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900">
-                  <option value="sop-rev1">SOP-LAB-QC-01 Rev.1 (r &ge; 0.995, CCV 90-110%, Spike 60-115%, RPD &le; 25%)</option>
-                </select>
-              </div>
-
-              <div className='space-y-1.5'>
-                <label className='text-xs font-medium text-slate-700'>Concentration Unit</label>
-                <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as SolutionConcUnit)}
-                 className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900">
-                  <option value="ppm">ppm</option>
-                  <option value="ppb">ppb</option>
-                  <option value="ppt">ppt</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 font-mono">
-                  Daftar Elemen Analit (Multi-Analyte)
-                </h2>
-                <span className={`text-[11px] font-mono px-2 py-0.5 rounded ${analytes.length > 0 ? 'bg-slate-100 text-slate-700 font-medium' : 'bg-amber-50 text-amber-700 font-semibold'}`}>
-                  {analytes.length} elemen aktif
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <form onSubmit={handleAddAnalyte} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newAnalyteInput}
-                    onChange={(e) => setNewAnalyteInput(e.target.value)}
-                    placeholder="Simbol analit baru (mis. Al, Cd, Mn, Pb, As)..."
-                    className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 font-mono"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newAnalyteInput.trim()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Tambah
-                  </button>
-                </form>
-
-                {analytes.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-6 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 text-center space-y-1 min-h-20">
-                    <span className="text-xs font-mono font-medium text-slate-500">Belum ada elemen analit</span>
-                    <p className="text-[11px] text-slate-400 max-w-sm">
-                      Ketik simbol analit (misal <strong className="text-slate-600 font-mono">Al</strong>, <strong className="text-slate-600 font-mono">Cd</strong>, <strong className="text-slate-600 font-mono">Mn</strong>, atau <strong className="text-slate-600 font-mono">Pb</strong>) lalu klik <strong>+ Tambah</strong> untuk membuka deret standar.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-slate-200 bg-slate-50/50 min-h-20 items-center">
-                    {analytes.map((symbol) => {
-                      const isEditing = editingAnalyte === symbol;
-                      return (
-                        <span
-                          key={symbol}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-300 text-xs font-mono font-medium text-slate-800 shadow-2xs"
-                        >
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              defaultValue={symbol}
-                              onBlur={(e) => handleRenameAnalyte(symbol, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRenameAnalyte(symbol, (e.target as HTMLInputElement).value);
-                                if (e.key === 'Escape') setEditingAnalyte(null);
-                              }}
-                              className="w-16 px-1 py-0.5 border border-blue-500 rounded text-xs bg-white focus:outline-none"
-                            />
-                          ) : (
-                            <>
-                              <span>{symbol}</span>
-                              <button
-                                type="button"
-                                onClick={() => setEditingAnalyte(symbol)}
-                                className="text-slate-400 hover:text-blue-600 transition-colors"
-                                title="Ubah nama simbol"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAnalyte(symbol)}
-                                className="text-slate-400 hover:text-red-600 transition-colors"
-                                title={`Hapus ${symbol}`}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-slate-100">
-                <div className="text-[11px] text-slate-500 flex items-start gap-1.5 leading-relaxed font-sans">
-                  <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <span>
-                    Sebelum lanjut ke Step 2, Anda harus memasukkan minimal 1 elemen analit. Kolom spreadsheet deret standar dan sampel uji akan langsung disesuaikan dengan analit aktif di sini.
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-3">
-            {!canProceedToStep2 && (
-              <span className="text-[11px] text-amber-600 font-mono flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                Tambahkan minimal 1 elemen analit untuk mengaktifkan Step 2
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => canProceedToStep2 && setStep(2)}
-              disabled={!canProceedToStep2}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900 text-white text-xs font-medium transition-colors shadow-2xs"
-            >
-              Lanjut ke Step 2: Deret Standar &amp; Kurva
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+        <MetadataWizard
+          title={title}
+          setTitle={setTitle}
+          instrument={instrument}
+          setInstrument={setInstrument}
+          inputMode={inputMode}
+          setInputMode={setInputMode}
+          signalUnit={signalUnit}
+          setSignalUnit={setSignalUnit}
+          unit={unit}
+          setUnit={setUnit}
+          analytes={analytes}
+          onAddAnalyte={handleAddAnalyteWithSymbol}
+          onRenameAnalyte={handleRenameAnalyte}
+          onRemoveAnalyte={handleRemoveAnalyte}
+          canProceedToStep2={canProceedToStep2}
+          onNextStep={() => setStep(2)}
+        />
       )}
 
       {step === 2 && (
@@ -640,7 +412,7 @@ export default function CalibrationWizardPage() {
             )}
 
             <StandardDataGrid
-              unit = {unit}
+              unit={unit}
               standards={standards}
               analytes={analytes}
               onChange={setStandards}
@@ -678,18 +450,16 @@ export default function CalibrationWizardPage() {
                       key={a}
                       type="button"
                       onClick={() => setSelectedAnalyte(a)}
-                      className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
-                        selectedAnalyte === a
+                      className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${selectedAnalyte === a
                           ? 'bg-white text-slate-900 font-semibold shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                        }`}
                     >
                       <span>{a}</span>
                       {reg && (
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isPass ? 'bg-emerald-500' : 'bg-red-500'
-                          }`}
+                          className={`w-1.5 h-1.5 rounded-full ${isPass ? 'bg-emerald-500' : 'bg-red-500'
+                            }`}
                         />
                       )}
                     </button>
@@ -720,11 +490,10 @@ export default function CalibrationWizardPage() {
                   </span>
                   {activeRegression.reg && (
                     <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded ${
-                        activeRegression.reg.r >= 0.995
+                      className={`inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded ${activeRegression.reg.r >= 0.995
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}
+                        }`}
                     >
                       {activeRegression.reg.r >= 0.995 ? (
                         <CheckCircle2 className="w-3 h-3" />
@@ -744,7 +513,7 @@ export default function CalibrationWizardPage() {
                         <XAxis
                           dataKey="nominal"
                           type="number"
-                          unit= {unit}
+                          unit={unit}
                           tick={{ fontSize: 10, fill: '#64748b' }}
                         />
                         <YAxis
@@ -852,9 +621,8 @@ export default function CalibrationWizardPage() {
                             <tr
                               key={a}
                               onClick={() => setSelectedAnalyte(a)}
-                              className={`cursor-pointer transition-colors ${
-                                isSelected ? 'bg-slate-100 font-semibold text-slate-900' : 'hover:bg-slate-50 text-slate-700'
-                              }`}
+                              className={`cursor-pointer transition-colors ${isSelected ? 'bg-slate-100 font-semibold text-slate-900' : 'hover:bg-slate-50 text-slate-700'
+                                }`}
                             >
                               <td className="py-1.5">{a}</td>
                               <td className="py-1.5 text-right">{reg ? reg.slope.toFixed(2) : '-'}</td>
@@ -862,9 +630,8 @@ export default function CalibrationWizardPage() {
                               <td className="py-1.5 text-right">{allRegressions[a]?.lod.toFixed(2) ?? '-'}</td>
                               <td className="py-1.5 text-center">
                                 <span
-                                  className={`inline-block px-1.5 py-0.2 rounded text-[10px] ${
-                                    isPass ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                                  }`}
+                                  className={`inline-block px-1.5 py-0.2 rounded text-[10px] ${isPass ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                    }`}
                                 >
                                   {isPass ? 'OK' : 'FAIL'}
                                 </span>

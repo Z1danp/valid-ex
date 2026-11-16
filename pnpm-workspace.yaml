@@ -4,3 +4,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+
+permissions:
+  '@tanstack/react-table':
+    skills: false
