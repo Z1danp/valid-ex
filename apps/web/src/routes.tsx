@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from '@/shared/components/AppLayout';
 import LoginPage from '@/features/auth/LoginPage';
+import RegisterPage from '@/features/auth/RegisterPage';
 import CalibrationListPage from '@/features/calibration/pages/CalibrationListPage';
 import CalibrationWizardPage from '@/features/calibration/pages/CalibrationWizardPage';
 import CalibrationDetailPage from '@/features/calibration/pages/CalibrationDetailPage';
@@ -8,6 +9,7 @@ import QcProfilesPage from '@/features/qc/pages/QcProfilesPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
   {
     path: '/',
     element: <AppLayout />,

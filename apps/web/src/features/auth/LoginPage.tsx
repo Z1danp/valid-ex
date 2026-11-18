@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FlaskConical, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
@@ -57,8 +57,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="pt-2 border-t border-slate-100 text-center text-[11px] text-slate-500 font-mono">
-          Demo Mockup Mode &bull; Auto Auth
+        <div className="pt-2 border-t border-slate-100 space-y-1 text-center">
+          <p className="text-xs text-slate-600">
+            Belum punya akun?{' '}
+            <Link
+              to="/register"
+              className="inline-flex items-center min-h-11 px-1 font-semibold text-slate-900 underline underline-offset-4 hover:text-slate-700 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              Daftar akun baru
+            </Link>
+          </p>
+          <p className="text-[11px] text-slate-600 font-mono">Demo Mockup Mode &bull; Auto Auth</p>
         </div>
       </div>
     </div>
