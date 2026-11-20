@@ -1,0 +1,401 @@
+import type { components } from '@valid-ex/contracts';
+
+export type SampleType = components['schemas']['SampleType'];
+export type SampleRowInput = components['schemas']['SampleRowInput'];
+
+export interface SampleRowState {
+  id: string;
+  labSampleId?: string;
+  type: SampleType;
+  parent?: string;
+  weight: number;
+  vol: number;
+  df: number;
+  expectedConc?: Record<string, number>;
+  spikeAdded?: Record<string, number>;
+  readings: Record<string, number>;
+}
+
+export interface SampleValidationIssue {
+  scope: 'batch' | 'sample' | 'qc';
+  sampleId?: string;
+  message: string;
+}
+
+export const MAX_BATCH_SAMPLE_ROWS = 250;
+
+export const ROUTINE_SAMPLE_TYPES = ['sample'] as const satisfies readonly SampleType[];
+
+export const QC_SAMPLE_TYPES = [
+  'blank_method',
+  'ccv',
+  'spike',
+  'duplicate',
+] as const satisfies readonly SampleType[];
+
+export const ALL_SAMPLE_TYPES = [
+  'sample',
+  'blank_method',
+  'ccv',
+  'spike',
+  'duplicate',
+] as const satisfies readonly SampleType[];
+
+export const SAMPLE_TYPE_META: Record<
+  SampleType,
+  {
+    label: string;
+    description: string;
+    tone: 'emerald' | 'slate' | 'amber' | 'blue' | 'purple';
+  }
+> = {
+  sample: {
+    label: 'sample',
+    description: 'Sampel uji rutin laboratorium',
+    tone: 'emerald',
+  },
+  blank_method: {
+    label: 'blank_method',
+    description: 'Blanko metode preparasi asam (C_blank)',
+    tone: 'slate',
+  },
+  ccv: {
+    label: 'ccv',
+    description: 'Continuing Calibration Verification',
+    tone: 'amber',
+  },
+  spike: {
+    label: 'spike',
+    description: 'Matrix spike (wajib Parent dan Spike Added)',
+    tone: 'blue',
+  },
+  duplicate: {
+    label: 'duplicate',
+    description: 'Ulangan duplo (wajib Parent)',
+    tone: 'purple',
+  },
+};
+
+export function isParentAllowed(type: SampleType): boolean {
+  return type === 'spike' || type === 'duplicate';
+}
+
+export function isWeightRequired(type: SampleType): boolean {
+  return type !== 'blank_method';
+}
+
+export function parseSampleTypeFromSet(
+  raw: string,
+  allowed: readonly SampleType[],
+  fallback: SampleType,
+): SampleType {
+  const normalized = raw.trim().toLowerCase() as SampleType;
+  return allowed.includes(normalized) ? normalized : fallback;
+}
+
+export function sanitizeSampleRow(row: SampleRowState): SampleRowState {
+  return {
+    ...row,
+    parent: isParentAllowed(row.type) ? (row.parent ?? '') : '',
+    expectedConc: row.type === 'ccv' ? row.expectedConc : undefined,
+    spikeAdded: row.type === 'spike' ? row.spikeAdded : undefined,
+  };
+}
+
+export function getAvailableParentOptions(sampleRows: readonly SampleRowState[]): string[] {
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  for (const row of sampleRows) {
+    if (row.type !== 'sample') continue;
+    const cleanId = row.id.trim();
+    if (!cleanId || seen.has(cleanId)) continue;
+    seen.add(cleanId);
+    options.push(cleanId);
+  }
+
+  return options;
+}
+
+/**
+ * Keeps QC parent links intact when an analyst renames a single routine sample ID in place.
+ */
+export function syncParentReferencesOnSampleRename(
+  qcRows: readonly SampleRowState[],
+  prevSamples: readonly SampleRowState[],
+  nextSamples: readonly SampleRowState[],
+): SampleRowState[] {
+  if (prevSamples.length !== nextSamples.length) {
+    return [...qcRows];
+  }
+
+  const renameMap = new Map<string, string>();
+  const prevCounts = new Map<string, number>();
+
+  for (const row of prevSamples) {
+    const id = row.id.trim();
+    if (id) prevCounts.set(id, (prevCounts.get(id) ?? 0) + 1);
+  }
+
+  for (let i = 0; i < prevSamples.length; i++) {
+    const prevRow = prevSamples[i];
+    const nextRow = nextSamples[i];
+    if (!prevRow || !nextRow) continue;
+    if (prevRow.type !== 'sample' || nextRow.type !== 'sample') continue;
+
+    const oldId = prevRow.id.trim();
+    const newId = nextRow.id.trim();
+    if (oldId && newId && oldId !== newId && prevCounts.get(oldId) === 1) {
+      renameMap.set(oldId, newId);
+    }
+  }
+
+  if (renameMap.size === 0) {
+    return [...qcRows];
+  }
+
+  return qcRows.map((row) => {
+    if (!isParentAllowed(row.type)) return row;
+    const currentParent = row.parent?.trim() ?? '';
+    const renamedParent = renameMap.get(currentParent);
+    if (!renamedParent) return row;
+    return { ...row, parent: renamedParent };
+  });
+}
+
+function mutateAnalyteMaps(
+  row: SampleRowState,
+  transform: (map: Record<string, number>) => Record<string, number>,
+): SampleRowState {
+  return {
+    ...row,
+    readings: transform({ ...row.readings }),
+    expectedConc: row.expectedConc ? transform({ ...row.expectedConc }) : undefined,
+    spikeAdded: row.spikeAdded ? transform({ ...row.spikeAdded }) : undefined,
+  };
+}
+
+export function renameAnalyteKeysInRows(
+  rows: readonly SampleRowState[],
+  oldSymbol: string,
+  newSymbol: string,
+): SampleRowState[] {
+  return rows.map((row) =>
+    mutateAnalyteMaps(row, (map) => {
+      if (map[oldSymbol] !== undefined) {
+        map[newSymbol] = map[oldSymbol]!;
+        delete map[oldSymbol];
+      }
+      return map;
+    }),
+  );
+}
+
+export function removeAnalyteKeyInRows(
+  rows: readonly SampleRowState[],
+  symbol: string,
+): SampleRowState[] {
+  return rows.map((row) =>
+    mutateAnalyteMaps(row, (map) => {
+      delete map[symbol];
+      return map;
+    }),
+  );
+}
+
+function checkPositiveTargetMap(
+  map: Record<string, number> | undefined,
+  analytes: readonly string[],
+  fieldLabel: string,
+  sampleId: string,
+  issues: SampleValidationIssue[],
+): void {
+  const missing = analytes.filter((analyte) => {
+    const val = map?.[analyte];
+    return typeof val !== 'number' || !Number.isFinite(val) || val <= 0;
+  });
+
+  if (missing.length > 0) {
+    issues.push({
+      scope: 'qc',
+      sampleId,
+      message: `${sampleId}: isi ${fieldLabel} (> 0) untuk analit ${missing.join(', ')}.`,
+    });
+  }
+}
+
+export function validateBatchSamples(
+  sampleRows: readonly SampleRowState[],
+  qcRows: readonly SampleRowState[],
+  analytes: readonly string[],
+): SampleValidationIssue[] {
+  const issues: SampleValidationIssue[] = [];
+  const totalRows = sampleRows.length + qcRows.length;
+
+  if (sampleRows.length === 0) {
+    issues.push({
+      scope: 'sample',
+      message: 'Tabel Sampel wajib berisi minimal 1 baris sampel uji.',
+    });
+  }
+
+  if (totalRows > MAX_BATCH_SAMPLE_ROWS) {
+    issues.push({
+      scope: 'batch',
+      message: `Total baris sampel dan QC (${totalRows}) melebihi batas maksimum ${MAX_BATCH_SAMPLE_ROWS} baris per batch (Invariant T2).`,
+    });
+  }
+
+  if (!qcRows.some((row) => row.type === 'blank_method')) {
+    issues.push({
+      scope: 'qc',
+      message: 'Tabel Kontrol Mutu (QC) wajib memiliki minimal 1 baris bertipe blank_method.',
+    });
+  }
+
+  const allTaggedRows = [
+    ...sampleRows.map((row, idx) => ({ row, scope: 'sample' as const, labelIdx: idx + 1 })),
+    ...qcRows.map((row, idx) => ({ row, scope: 'qc' as const, labelIdx: idx + 1 })),
+  ];
+
+  // Database enforces unique (calibration_id, sample_id) across both routine and QC rows.
+  const idCounts = new Map<string, number>();
+  for (const { row } of allTaggedRows) {
+    const cleanId = row.id.trim();
+    if (cleanId) {
+      idCounts.set(cleanId, (idCounts.get(cleanId) ?? 0) + 1);
+    }
+  }
+
+  const reportedDuplicates = new Set<string>();
+  const availableParents = new Set(getAvailableParentOptions(sampleRows));
+
+  for (const { row, scope, labelIdx } of allTaggedRows) {
+    const cleanId = row.id.trim();
+    const displayId = cleanId || `${scope === 'sample' ? 'Sampel' : 'QC'} baris ${labelIdx}`;
+
+    if (!cleanId) {
+      issues.push({
+        scope,
+        message: `${displayId}: Sample ID wajib diisi.`,
+      });
+    } else if ((idCounts.get(cleanId) ?? 0) > 1 && !reportedDuplicates.has(cleanId)) {
+      reportedDuplicates.add(cleanId);
+      issues.push({
+        scope,
+        sampleId: cleanId,
+        message: `Sample ID "${cleanId}" duplikat; setiap baris pada Tabel Sampel dan Tabel QC harus unik.`,
+      });
+    }
+
+    if (isWeightRequired(row.type) && (!Number.isFinite(row.weight) || row.weight <= 0)) {
+      issues.push({
+        scope,
+        sampleId: cleanId,
+        message: `${displayId}: Bobot harus lebih besar dari 0.`,
+      });
+    }
+    if (!Number.isFinite(row.vol) || row.vol <= 0) {
+      issues.push({
+        scope,
+        sampleId: cleanId,
+        message: `${displayId}: Volume harus lebih besar dari 0.`,
+      });
+    }
+    if (!Number.isFinite(row.df) || row.df <= 0) {
+      issues.push({
+        scope,
+        sampleId: cleanId,
+        message: `${displayId}: dF harus lebih besar dari 0.`,
+      });
+    }
+
+    const missingReadings = analytes.filter((analyte) => {
+      const val = row.readings[analyte];
+      return typeof val !== 'number' || !Number.isFinite(val);
+    });
+    if (missingReadings.length > 0) {
+      issues.push({
+        scope,
+        sampleId: cleanId,
+        message: `${displayId}: pembacaan alat belum terisi untuk analit ${missingReadings.join(', ')}.`,
+      });
+    }
+
+    if (scope === 'qc') {
+      if (isParentAllowed(row.type)) {
+        const parentId = row.parent?.trim() ?? '';
+        if (!parentId) {
+          issues.push({
+            scope: 'qc',
+            sampleId: cleanId,
+            message: `${displayId} (${row.type}): pilih Parent dari daftar sampel yang tersedia.`,
+          });
+        } else if (parentId === cleanId || !availableParents.has(parentId)) {
+          issues.push({
+            scope: 'qc',
+            sampleId: cleanId,
+            message: `${displayId}: Parent "${parentId}" tidak ditemukan sebagai baris sample di Tabel Sampel.`,
+          });
+        }
+      }
+
+      if (row.type === 'ccv') {
+        checkPositiveTargetMap(row.expectedConc, analytes, 'expectedConc', displayId, issues);
+      }
+      if (row.type === 'spike') {
+        checkPositiveTargetMap(row.spikeAdded, analytes, 'spikeAdded', displayId, issues);
+      }
+    }
+  }
+
+  return issues;
+}
+
+function pickAnalyteNumbers(
+  source: Record<string, number> | undefined,
+  analytes: readonly string[],
+  fallback?: number,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const analyte of analytes) {
+    const val = source?.[analyte];
+    if (typeof val === 'number' && Number.isFinite(val)) {
+      out[analyte] = val;
+    } else if (fallback !== undefined) {
+      out[analyte] = fallback;
+    }
+  }
+  return out;
+}
+
+export function toSampleRowInputs(
+  sampleRows: readonly SampleRowState[],
+  qcRows: readonly SampleRowState[],
+  analytes: readonly string[],
+): SampleRowInput[] {
+  return [...sampleRows, ...qcRows].map((row) => {
+    const trimmedLabId = row.labSampleId?.trim();
+    const parentId = isParentAllowed(row.type) ? row.parent?.trim() || null : null;
+    // Method blanks have no solid weight; send 1 as a positive nominal divisor for gateway schema and Excel formulas.
+    const normalizedWeight = isWeightRequired(row.type)
+      ? row.weight
+      : row.weight > 0 && Number.isFinite(row.weight)
+        ? row.weight
+        : 1;
+
+    return {
+      sampleId: row.id.trim(),
+      // DB CHECK constraint rejects empty strings for lab_sample_id; normalize blank values to null.
+      labSampleId: trimmedLabId ? trimmedLabId : null,
+      sampleType: row.type,
+      parentSampleId: parentId,
+      expectedConc: row.type === 'ccv' ? pickAnalyteNumbers(row.expectedConc, analytes) : null,
+      spikeAdded: row.type === 'spike' ? pickAnalyteNumbers(row.spikeAdded, analytes) : null,
+      weight: normalizedWeight,
+      volume: row.vol,
+      df: row.df,
+      readings: pickAnalyteNumbers(row.readings, analytes, 0),
+    };
+  });
+}

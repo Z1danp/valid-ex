@@ -2,7 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { type StandardRowItem } from '../components/StandardDataGrid';
-import { type SampleRowState } from '../components/SampleDataGrid';
+import {
+  removeAnalyteKeyInRows,
+  renameAnalyteKeysInRows,
+  syncParentReferencesOnSampleRename,
+  toSampleRowInputs,
+  type SampleRowState,
+} from '../utils/sampleValidation';
 
 import type { components } from '@valid-ex/contracts';
 import MetadataWizard from '../components/MetadataWizard';
@@ -31,12 +37,59 @@ const INITIAL_STANDARDS: StandardRowItem[] = DEFAULT_LEVELS.map((lvl) => ({
   readings: {},
 }));
 
-const INITIAL_SAMPLES: SampleRowState[] = [
-  { id: 'MB', type: 'blank_method', parent: '', weight: 0.2, vol: 50, df: 1, readings: {} },
-  { id: 'S1', type: 'sample', parent: '', weight: 0.2014, vol: 50, df: 1, readings: {} },
-  { id: 'S2', type: 'sample', parent: '', weight: 0.2005, vol: 50, df: 1, readings: {} },
-  { id: 'CCV1', type: 'ccv', parent: '', weight: 0.2, vol: 50, df: 1, readings: {} },
-  { id: 'SP1', type: 'spike', parent: 'S1', weight: 0.2, vol: 50, df: 1, readings: {} },
+const INITIAL_ROUTINE_SAMPLES: SampleRowState[] = [
+  {
+    id: 'S1',
+    labSampleId: '',
+    type: 'sample',
+    parent: '',
+    weight: 0.2014,
+    vol: 50,
+    df: 1,
+    readings: {},
+  },
+  {
+    id: 'S2',
+    labSampleId: '',
+    type: 'sample',
+    parent: '',
+    weight: 0.2005,
+    vol: 50,
+    df: 1,
+    readings: {},
+  },
+];
+
+const INITIAL_QC_SAMPLES: SampleRowState[] = [
+  {
+    id: 'MB',
+    type: 'blank_method',
+    parent: '',
+    weight: 1,
+    vol: 50,
+    df: 1,
+    readings: {},
+  },
+  {
+    id: 'CCV1',
+    type: 'ccv',
+    parent: '',
+    weight: 0.2,
+    vol: 50,
+    df: 1,
+    expectedConc: {},
+    readings: {},
+  },
+  {
+    id: 'SP1',
+    type: 'spike',
+    parent: 'S1',
+    weight: 0.2,
+    vol: 50,
+    df: 1,
+    spikeAdded: {},
+    readings: {},
+  },
   { id: 'D1', type: 'duplicate', parent: 'S1', weight: 0.201, vol: 50, df: 1, readings: {} },
 ];
 
@@ -54,10 +107,11 @@ export default function CalibrationWizardPage() {
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
   const [editingAnalyte, setEditingAnalyte] = useState<string | null>(null);
 
-  const [selectedAnalyte, setSelectedAnalyte] = useState<string>('');
+  const [selectedAnalyte, setSelectedAnalyte] = useState<string>(INITIAL_ANALYTES[0] ?? '');
 
   const [standards, setStandards] = useState<StandardRowItem[]>(INITIAL_STANDARDS);
-  const [samples, setSamples] = useState<SampleRowState[]>(INITIAL_SAMPLES);
+  const [sampleRows, setSampleRows] = useState<SampleRowState[]>(INITIAL_ROUTINE_SAMPLES);
+  const [qcRows, setQcRows] = useState<SampleRowState[]>(INITIAL_QC_SAMPLES);
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
 
   // Progressive Wizard Gating: Step 2 requires >= 1 analyte, Step 3 requires standards filled
@@ -130,16 +184,8 @@ export default function CalibrationWizardPage() {
       }),
     );
 
-    setSamples((prev) =>
-      prev.map((s) => {
-        const readings = { ...s.readings };
-        if (readings[oldSymbol] !== undefined) {
-          readings[formatted] = readings[oldSymbol]!;
-          delete readings[oldSymbol];
-        }
-        return { ...s, readings };
-      }),
-    );
+    setSampleRows((prev) => renameAnalyteKeysInRows(prev, oldSymbol, formatted));
+    setQcRows((prev) => renameAnalyteKeysInRows(prev, oldSymbol, formatted));
 
     if (selectedAnalyte === oldSymbol) {
       setSelectedAnalyte(formatted);
@@ -159,17 +205,18 @@ export default function CalibrationWizardPage() {
       }),
     );
 
-    setSamples((prev) =>
-      prev.map((s) => {
-        const readings = { ...s.readings };
-        delete readings[symbol];
-        return { ...s, readings };
-      }),
-    );
+    setSampleRows((prev) => removeAnalyteKeyInRows(prev, symbol));
+    setQcRows((prev) => removeAnalyteKeyInRows(prev, symbol));
 
     if (selectedAnalyte === symbol) {
       setSelectedAnalyte(updated[0] || '');
     }
+  };
+
+  const handleRoutineSamplesChange = (nextSamples: SampleRowState[]) => {
+    const syncedQc = syncParentReferencesOnSampleRename(qcRows, sampleRows, nextSamples);
+    setSampleRows(nextSamples);
+    setQcRows(syncedQc);
   };
 
   const handleNotice = (msg: string) => {
@@ -178,6 +225,8 @@ export default function CalibrationWizardPage() {
   };
 
   const handleSubmitBatch = () => {
+    // Prepared SampleRowInput[] payload for upcoming POST /api/v1/calibrations hook integration.
+    toSampleRowInputs(sampleRows, qcRows, analytes);
     navigate('/calibrations/batch-demo-1');
   };
 
@@ -286,8 +335,13 @@ export default function CalibrationWizardPage() {
       {step === 3 && (
         <SampleWizard
           analytes={analytes}
-          samples={samples}
-          setSamples={setSamples}
+          sampleRows={sampleRows}
+          setSampleRows={handleRoutineSamplesChange}
+          qcRows={qcRows}
+          setQcRows={setQcRows}
+          unit={unit}
+          inputMode={inputMode}
+          signalUnit={signalUnit}
           pasteNotice={pasteNotice}
           onNotice={handleNotice}
           setStep={setStep}
