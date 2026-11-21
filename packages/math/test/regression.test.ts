@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertMinNonZeroLevels, linearRegression, pearsonR } from '../src/regression';
-import { DATASETS } from './fixtures/reference';
+import { DATASETS, NIST_NORRIS } from './fixtures/reference';
 
 const abs = (a: number, e: number) => Math.abs(a - e);
 const rel = (a: number, e: number) => (e === 0 ? Math.abs(a) : Math.abs((a - e) / e));
@@ -41,6 +41,18 @@ describe('linearRegression — nilai acuan independen (Python statistics)', () =
     expect(rel(r.r, expected.r)).toBeLessThan(1e-12);
     expect(rel(r.syx, expected.syx)).toBeLessThan(1e-9);
     expect(r.syx).toBeGreaterThan(0);
+  });
+});
+
+describe('linearRegression — NIST StRD Norris (certified reference)', () => {
+  it('cocok dengan nilai tersertifikasi 15 digit NIST Norris.dat', () => {
+    const r = linearRegression(NIST_NORRIS.points);
+    const { expected } = NIST_NORRIS;
+    expect(r.n).toBe(expected.n);
+    expect(rel(r.slope, expected.slope)).toBeLessThan(1e-12);
+    expect(rel(r.intercept, expected.intercept)).toBeLessThan(1e-12);
+    expect(rel(r.syx, expected.syx)).toBeLessThan(1e-9);
+    expect(rel(r.rSquared, expected.rSquared)).toBeLessThan(1e-12);
   });
 });
 

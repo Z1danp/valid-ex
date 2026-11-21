@@ -295,3 +295,142 @@ describe('evaluateCalibration — validasi & soft-flag', () => {
     expect(() => evaluateCalibration(batch(missingWeight))).toThrow(/weight|volume|df/i);
   });
 });
+
+describe('evaluateCalibration — cross-reference data lab nyata (docs/Olah data ICP-OES.xlsx, Logam Mo)', () => {
+  const moStandards: StandardRow[] = [
+    { standardName: 'Blank', readings: { Mo: { nominalConc: 0, signal: 33.25 } } },
+    { standardName: 'Standar 1', readings: { Mo: { nominalConc: 0.1, signal: 2279.39 } } },
+    { standardName: 'Standar 2', readings: { Mo: { nominalConc: 0.3, signal: 5403.57 } } },
+    { standardName: 'Standar 3', readings: { Mo: { nominalConc: 0.5, signal: 9132.67 } } },
+    { standardName: 'Standar 4', readings: { Mo: { nominalConc: 0.7, signal: 12614.31 } } },
+    { standardName: 'Standar 5', readings: { Mo: { nominalConc: 0.8, signal: 13896.79 } } },
+    { standardName: 'Standar 6', readings: { Mo: { nominalConc: 1, signal: 17610.61 } } },
+  ];
+
+  const moInput: CalibrationInput = {
+    title: 'Heavy Metal By ICP-OES (Mo 202.032 nm)',
+    instrument: 'ICP-OES',
+    inputMode: 'in_vial_concentration',
+    units: {
+      solutionConcUnit: 'ppm',
+      solidResultUnit: 'mg/kg',
+      weightUnit: 'g',
+      volumeUnit: 'mL',
+      signalUnit: 'cps',
+    },
+    analytes: ['Mo'],
+    standards: moStandards,
+    samples: [
+      {
+        sampleId: 'Blank',
+        sampleType: 'blank_method',
+        weight: null,
+        volume: null,
+        df: null,
+        readings: { Mo: 0 },
+      },
+      {
+        sampleId: 'HKUST-1',
+        sampleType: 'sample',
+        weight: 0.729,
+        volume: 50,
+        df: 1,
+        readings: { Mo: 0 },
+      },
+      {
+        sampleId: 'PMA (0,041) @HKUST-1',
+        sampleType: 'sample',
+        weight: 0.1242,
+        volume: 50,
+        df: 100,
+        readings: { Mo: 0.21 },
+      },
+      {
+        sampleId: 'PMA (0,082) @HKUST-1',
+        sampleType: 'sample',
+        weight: 0.1414,
+        volume: 50,
+        df: 100,
+        readings: { Mo: 0.26 },
+      },
+      {
+        sampleId: 'PMA (0,164) @HKUST-1',
+        sampleType: 'sample',
+        weight: 0.0955,
+        volume: 50,
+        df: 100,
+        readings: { Mo: 0.25 },
+      },
+      {
+        sampleId: 'PMA (0,246) @HKUST-1',
+        sampleType: 'sample',
+        weight: 0.0909,
+        volume: 50,
+        df: 100,
+        readings: { Mo: 0.37 },
+      },
+      {
+        sampleId: 'Cek Std',
+        sampleType: 'ccv',
+        weight: null,
+        volume: null,
+        df: null,
+        expectedConc: { Mo: 0.5 },
+        readings: { Mo: 0.5 },
+      },
+    ],
+    qcProfile: {
+      id: 'sop-icp-oes-mo',
+      name: 'QC CRITERIA CHECK (Olah data ICP-OES.xlsx)',
+      methodRef: 'Sheet Mo Rows 20-23',
+      version: 1,
+      effectiveDate: '2026-01-01',
+      solutionConcUnit: 'ppm',
+      linearity: { minR: 0.995 },
+      analytes: {
+        Mo: {
+          ccv: { bands: [{ maxConc: null, minRecovery: 90, maxRecovery: 110 }] },
+          spike: { bands: [{ maxConc: null, minRecovery: 60, maxRecovery: 115 }] },
+          duplicate: { bands: [{ maxConc: null, maxRpd: 20 }] },
+        },
+      },
+    },
+  };
+
+  const out = evaluateCalibration(moInput);
+  const row = (id: string) => out.evaluatedSamples.find((s) => s.sampleId === id)!;
+
+  it('memenuhi QC criteria check (r >= 0.995, CCV 100%) dan LOD/LOQ selaras dengan Excel analis', () => {
+    expect(out.qcStatus).toBe('PASSED');
+    expect(out.qcViolations).toEqual([]);
+
+    const moCurve = out.analytesSummary.Mo!;
+    expect(moCurve.r).toBeGreaterThanOrEqual(0.995);
+    // Excel analis membulatkan trendline ke 17330x + 292.67 (LOD=0.04053, LOQ=0.13510 ppm)
+    expect(Math.abs(moCurve.lodInstrument - 0.04053)).toBeLessThan(1e-4);
+    expect(Math.abs(moCurve.loqInstrument - 0.1351)).toBeLessThan(1e-4);
+  });
+
+  it('menghitung hasil padatan PMA @HKUST-1 cocok persis dengan sheet Mo dan menahan HKUST-1 ke ND', () => {
+    expect(row('Blank').analytes.Mo!.reportedValue).toBe('ND');
+    expect(row('HKUST-1').analytes.Mo!.detectionZone).toBe('NOT_DETECTED');
+    expect(row('HKUST-1').analytes.Mo!.concSolid).toBeNull();
+    expect(row('HKUST-1').analytes.Mo!.reportedValue).toBe('ND');
+
+    expect(
+      rel(row('PMA (0,041) @HKUST-1').analytes.Mo!.concSolid!, 8454.106280193237),
+    ).toBeLessThan(1e-12);
+    expect(
+      rel(row('PMA (0,082) @HKUST-1').analytes.Mo!.concSolid!, 9193.776520509195),
+    ).toBeLessThan(1e-12);
+    expect(
+      rel(row('PMA (0,164) @HKUST-1').analytes.Mo!.concSolid!, 13089.005235602093),
+    ).toBeLessThan(1e-12);
+    expect(
+      rel(row('PMA (0,246) @HKUST-1').analytes.Mo!.concSolid!, 20352.035203520354),
+    ).toBeLessThan(1e-12);
+
+    expect(row('Cek Std').analytes.Mo!.ccvRecovery).toBe(100);
+    expect(row('Cek Std').analytes.Mo!.reportedValue).toBe('0.500 ppm');
+  });
+});
