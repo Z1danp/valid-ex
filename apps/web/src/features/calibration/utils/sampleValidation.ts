@@ -408,3 +408,57 @@ export function toSampleRowInputs(
     };
   });
 }
+
+/**
+ * Computes default CCV target concentration as the calibration standard nearest
+ * to the midpoint of the non-blank [min, max] standard range.
+ */
+export function getDefaultCcvTargetFromStandards(
+  standards: ReadonlyArray<{ nominalConc: number }>,
+): number | undefined {
+  const concs = standards
+    .map((s) => s.nominalConc)
+    .filter((c) => Number.isFinite(c) && c > 0);
+
+  if (concs.length === 0) return undefined;
+
+  const min = Math.min(...concs);
+  const max = Math.max(...concs);
+  const midpoint = (min + max) / 2;
+
+  return concs.reduce((closest, curr) =>
+    Math.abs(curr - midpoint) < Math.abs(closest - midpoint) ? curr : closest,
+  );
+}
+
+/**
+ * Populates missing `expectedConc` entries on CCV rows without overwriting
+ * existing manual values. Returns the original array reference when unchanged.
+ */
+export function fillMissingCcvExpectedConc(
+  rows: SampleRowState[],
+  analytes: readonly string[],
+  defaultTarget: number | undefined,
+): SampleRowState[] {
+  if (defaultTarget === undefined || analytes.length === 0) return rows;
+
+  let changed = false;
+  const nextRows = rows.map((row) => {
+    if (row.type !== 'ccv') return row;
+
+    let rowChanged = false;
+    const nextExpected = { ...(row.expectedConc ?? {}) };
+    for (const analyte of analytes) {
+      if (nextExpected[analyte] === undefined) {
+        nextExpected[analyte] = defaultTarget;
+        rowChanged = true;
+      }
+    }
+
+    if (!rowChanged) return row;
+    changed = true;
+    return { ...row, expectedConc: nextExpected };
+  });
+
+  return changed ? nextRows : rows;
+}

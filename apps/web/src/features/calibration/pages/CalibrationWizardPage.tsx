@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Lock } from 'iconoir-react';
 import { type StandardRowItem } from '../components/StandardDataGrid';
 import {
+  fillMissingCcvExpectedConc,
+  getDefaultCcvTargetFromStandards,
   removeAnalyteKeyInRows,
   renameAnalyteKeysInRows,
   syncParentReferencesOnSampleRename,
@@ -131,6 +133,7 @@ export default function CalibrationWizardPage() {
   }, [standards, analytes]);
 
   const canProceedToStep3 = canProceedToStep2 && isStandardsFilled;
+  const defaultCcvTarget = useMemo(() => getDefaultCcvTargetFromStandards(standards), [standards]);
 
   // Auto-redirect to valid step if dependencies are deleted
   useEffect(() => {
@@ -140,6 +143,12 @@ export default function CalibrationWizardPage() {
       setStep(2);
     }
   }, [analytes.length, canProceedToStep3, step]);
+
+  // Populate missing CCV expectedConc from the standard midpoint when entering Step 3.
+  useEffect(() => {
+    if (step !== 3 || defaultCcvTarget === undefined) return;
+    setQcRows((prev) => fillMissingCcvExpectedConc(prev, analytes, defaultCcvTarget));
+  }, [step, analytes, defaultCcvTarget]);
 
   const handleAddAnalyteWithSymbol = (rawSymbol: string) => {
     const raw = rawSymbol.trim();
@@ -339,6 +348,7 @@ export default function CalibrationWizardPage() {
           setSampleRows={handleRoutineSamplesChange}
           qcRows={qcRows}
           setQcRows={setQcRows}
+          defaultCcvTarget={defaultCcvTarget}
           unit={unit}
           inputMode={inputMode}
           signalUnit={signalUnit}

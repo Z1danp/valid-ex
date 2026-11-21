@@ -11,6 +11,7 @@ import { SampleDataGrid } from './SampleDataGrid';
 import { QcDataGrid } from './QcDataGrid';
 import { QcTargetParametersPanel } from './QcTargetParametersPanel';
 import {
+  fillMissingCcvExpectedConc,
   getAvailableParentOptions,
   validateBatchSamples,
   type SampleRowState,
@@ -26,6 +27,7 @@ export interface SampleWizardProps {
   setSampleRows: (updated: SampleRowState[]) => void;
   qcRows: SampleRowState[];
   setQcRows: (updated: SampleRowState[]) => void;
+  defaultCcvTarget?: number;
   unit: SolutionConcUnit;
   inputMode: InputMode;
   signalUnit: SignalUnit;
@@ -41,6 +43,7 @@ export default function SampleWizard({
   setSampleRows,
   qcRows,
   setQcRows,
+  defaultCcvTarget,
   unit,
   inputMode,
   signalUnit,
@@ -59,6 +62,10 @@ export default function SampleWizard({
     () => validateBatchSamples(sampleRows, qcRows, analytes),
     [sampleRows, qcRows, analytes],
   );
+
+  const handleQcGridChange = (updated: SampleRowState[]) => {
+    setQcRows(fillMissingCcvExpectedConc(updated, analytes, defaultCcvTarget));
+  };
 
   const handleSubmitClick = () => {
     if (validationIssues.length > 0) {
@@ -142,7 +149,7 @@ export default function SampleWizard({
           unit={unit}
           inputMode={inputMode}
           signalUnit={signalUnit}
-          onChange={setQcRows}
+          onChange={handleQcGridChange}
           onNotice={onNotice}
         />
 
