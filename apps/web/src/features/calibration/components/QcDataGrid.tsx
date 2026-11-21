@@ -14,7 +14,7 @@ import {
   MAX_BATCH_SAMPLE_ROWS,
   QC_SAMPLE_TYPES,
   isParentAllowed,
-  isWeightRequired,
+  isPrepParamsRequired,
   parseSampleTypeFromSet,
   sanitizeSampleRow,
   type SampleRowState,
@@ -175,32 +175,41 @@ export function QcDataGrid({
       }
 
       if (col === weightCol) {
-        if (!isWeightRequired(item.type)) {
+        if (!isPrepParamsRequired(item.type)) {
           return buildBlockedTextCell('--');
         }
+        const weight = item.weight ?? 0.2;
         return {
           kind: GridCellKind.Number,
-          data: item.weight,
-          displayData: item.weight.toFixed(4),
+          data: weight,
+          displayData: weight.toFixed(4),
           allowOverlay: true,
           readonly: false,
         };
       }
 
       if (col === volCol) {
+        if (!isPrepParamsRequired(item.type)) {
+          return buildBlockedTextCell('--');
+        }
+        const vol = item.vol ?? 50;
         return {
           kind: GridCellKind.Number,
-          data: item.vol,
-          displayData: String(item.vol),
+          data: vol,
+          displayData: String(vol),
           allowOverlay: true,
           readonly: false,
         };
       }
 
+      if (!isPrepParamsRequired(item.type)) {
+        return buildBlockedTextCell('--');
+      }
+      const df = item.df ?? 1;
       return {
         kind: GridCellKind.Number,
-        data: item.df,
-        displayData: String(item.df),
+        data: df,
+        displayData: String(df),
         allowOverlay: true,
         readonly: false,
       };
@@ -216,12 +225,15 @@ export function QcDataGrid({
       if (col === parentCol && !isParentAllowed(target.type)) {
         return false;
       }
-      if (col === weightCol && !isWeightRequired(target.type)) {
+      if (
+        (col === weightCol || col === volCol || col === dfCol) &&
+        !isPrepParamsRequired(target.type)
+      ) {
         return false;
       }
       return true;
     },
-    [parentCol, qcRows, weightCol],
+    [dfCol, parentCol, qcRows, volCol, weightCol],
   );
 
   const handleCellEdited = useCallback(
@@ -253,14 +265,9 @@ export function QcDataGrid({
           rawType = newValue.data;
         }
         const nextType = parseSampleTypeFromSet(rawType, QC_SAMPLE_TYPES, target.type);
-        const restoredWeight =
-          !isWeightRequired(target.type) && isWeightRequired(nextType) && target.weight <= 0
-            ? 0.2
-            : target.weight;
         updated[row] = sanitizeSampleRow({
           ...target,
           type: nextType,
-          weight: restoredWeight,
         });
       } else if (col === parentCol) {
         if (!isParentAllowed(target.type)) {
@@ -275,22 +282,28 @@ export function QcDataGrid({
         }
         updated[row] = { ...target, parent: nextParent };
       } else if (col === weightCol) {
-        if (!isWeightRequired(target.type)) {
+        if (!isPrepParamsRequired(target.type)) {
           return;
         }
         updated[row] = {
           ...target,
-          weight: extractCellNumber(newValue, target.weight, true),
+          weight: extractCellNumber(newValue, target.weight ?? 0.2, true),
         };
       } else if (col === volCol) {
+        if (!isPrepParamsRequired(target.type)) {
+          return;
+        }
         updated[row] = {
           ...target,
-          vol: extractCellNumber(newValue, target.vol, true),
+          vol: extractCellNumber(newValue, target.vol ?? 50, true),
         };
       } else if (col === dfCol) {
+        if (!isPrepParamsRequired(target.type)) {
+          return;
+        }
         updated[row] = {
           ...target,
-          df: extractCellNumber(newValue, target.df, true),
+          df: extractCellNumber(newValue, target.df ?? 1, true),
         };
       }
 
@@ -321,9 +334,9 @@ export function QcDataGrid({
             id: `QC${nextIdx}`,
             type: 'ccv',
             parent: '',
-            weight: 0.2,
-            vol: 50,
-            df: 1,
+            weight: null,
+            vol: null,
+            df: null,
             readings: {},
           });
         }
@@ -355,13 +368,17 @@ export function QcDataGrid({
               rowItem.parent = clean === '-' || clean === '--' ? '' : clean;
             }
           } else if (targetCol === weightCol) {
-            if (isWeightRequired(rowItem.type)) {
-              rowItem.weight = parseNumberFromInput(clean, rowItem.weight, true);
+            if (isPrepParamsRequired(rowItem.type)) {
+              rowItem.weight = parseNumberFromInput(clean, rowItem.weight ?? 0.2, true);
             }
           } else if (targetCol === volCol) {
-            rowItem.vol = parseNumberFromInput(clean, rowItem.vol, true);
+            if (isPrepParamsRequired(rowItem.type)) {
+              rowItem.vol = parseNumberFromInput(clean, rowItem.vol ?? 50, true);
+            }
           } else if (targetCol === dfCol) {
-            rowItem.df = parseNumberFromInput(clean, rowItem.df, true);
+            if (isPrepParamsRequired(rowItem.type)) {
+              rowItem.df = parseNumberFromInput(clean, rowItem.df ?? 1, true);
+            }
           }
         });
 
@@ -406,9 +423,9 @@ export function QcDataGrid({
       id: `CCV${nextIdx}`,
       type: 'ccv',
       parent: '',
-      weight: 0.2,
-      vol: 50,
-      df: 1,
+      weight: null,
+      vol: null,
+      df: null,
       readings: {},
     };
 
@@ -602,10 +619,12 @@ export function QcDataGrid({
           <div className="text-slate-600">
             Kolom <strong>Parent</strong> diblokir (<code className="font-mono">--</code>) untuk{' '}
             <code className="font-mono text-slate-900">blank_method</code> dan{' '}
-            <code className="font-mono text-slate-900">ccv</code>. Kolom <strong>Bobot (g)</strong>{' '}
-            diblokir (<code className="font-mono">--</code>) untuk{' '}
-            <code className="font-mono text-slate-900">blank_method</code> karena blanko metode
-            tidak memiliki bobot sampel padatan.
+            <code className="font-mono text-slate-900">ccv</code>. Kolom <strong>Bobot (g)</strong>,{' '}
+            <strong>Vol (mL)</strong>, dan <strong>dF</strong> juga diblokir (
+            <code className="font-mono">--</code>) untuk{' '}
+            <code className="font-mono text-slate-900">blank_method</code> dan{' '}
+            <code className="font-mono text-slate-900">ccv</code> karena diukur langsung sebagai
+            larutan tanpa preparasi bobot padatan.
           </div>
         </div>
       </div>

@@ -43,11 +43,17 @@ function batch(samples: SampleRow[]): CalibrationInput {
 }
 
 const base = { weight: 0.2, volume: 50, df: 1 };
+const nullPrep = { weight: null, volume: null, df: null };
 
 describe('evaluateCalibration — skenario terkontrol mode raw_signal', () => {
   const samples: SampleRow[] = [
     // Blanko metode: cRaw Al = 0.5, Pb = 2
-    { sampleId: 'MB', sampleType: 'blank_method', ...base, readings: { Al: AL(0.5), Pb: PB(2) } },
+    {
+      sampleId: 'MB',
+      sampleType: 'blank_method',
+      ...nullPrep,
+      readings: { Al: AL(0.5), Pb: PB(2) },
+    },
     // Sampel S1: cRaw Al = 11, Pb = 12
     { sampleId: 'S1', sampleType: 'sample', ...base, readings: { Al: AL(11), Pb: PB(12) } },
     // Sampel S2: cRaw Al = 3 (-> cNet 2.5), Pb = 1 (-> cNet -1 -> ND)
@@ -56,7 +62,7 @@ describe('evaluateCalibration — skenario terkontrol mode raw_signal', () => {
     {
       sampleId: 'CCV1',
       sampleType: 'ccv',
-      ...base,
+      ...nullPrep,
       expectedConc: { Al: 100, Pb: 50 },
       readings: { Al: AL(120), Pb: PB(50) },
     },
@@ -130,12 +136,33 @@ describe('evaluateCalibration — skenario terkontrol mode raw_signal', () => {
     expect(ccv.appliedCriteria.min).toBe(90);
     expect(ccv.appliedCriteria.max).toBe(110);
   });
+
+  it('blank_method dan ccv tidak dikonversi ke padatan (weight/volume/df/lodMethod/loqMethod/concSolid = null) dan CCV melaporkan konsentrasi larutan terukur (cRaw)', () => {
+    const mb = row('MB');
+    expect(mb.weight).toBeNull();
+    expect(mb.volume).toBeNull();
+    expect(mb.df).toBeNull();
+    expect(mb.analytes.Al!.lodMethod).toBeNull();
+    expect(mb.analytes.Al!.loqMethod).toBeNull();
+    expect(mb.analytes.Al!.concSolid).toBeNull();
+    expect(mb.analytes.Al!.reportedValue).toBe('ND');
+
+    const ccv = row('CCV1');
+    expect(ccv.weight).toBeNull();
+    expect(ccv.volume).toBeNull();
+    expect(ccv.df).toBeNull();
+    expect(ccv.analytes.Al!.lodMethod).toBeNull();
+    expect(ccv.analytes.Al!.loqMethod).toBeNull();
+    expect(ccv.analytes.Al!.concSolid).toBeNull();
+    expect(ccv.analytes.Al!.reportedValue).toBe('120.000 ppb');
+    expect(ccv.analytes.Pb!.reportedValue).toBe('50.000 ppb');
+  });
 });
 
 describe('evaluateCalibration — mode in_vial_concentration', () => {
   it('readings sampel dipakai langsung (kurva tetap dari signal standar)', () => {
     const samples: SampleRow[] = [
-      { sampleId: 'MB', sampleType: 'blank_method', ...base, readings: { Al: 0.5, Pb: 2 } },
+      { sampleId: 'MB', sampleType: 'blank_method', ...nullPrep, readings: { Al: 0.5, Pb: 2 } },
       { sampleId: 'S1', sampleType: 'sample', ...base, readings: { Al: 11, Pb: 12 } },
     ];
     const out = evaluateCalibration({ ...batch(samples), inputMode: 'in_vial_concentration' });
@@ -186,9 +213,7 @@ describe('evaluateCalibration — LOD/LOQ metode PER-SAMPEL', () => {
       {
         sampleId: 'MB',
         sampleType: 'blank_method',
-        weight: 0.2,
-        volume: 50,
-        df: 1,
+        ...nullPrep,
         readings: { Al: sig(5) },
       },
       mk('W02', 0.2),
@@ -204,13 +229,13 @@ describe('evaluateCalibration — LOD/LOQ metode PER-SAMPEL', () => {
 
   it('lodMethod/loqMethod berskala 1/berat', () => {
     // ppb -> mg/kg: lodMethod = lodInstrument * V / (W * 1000)
-    expect(rel(row('W02').analytes.Al!.lodMethod, (lodInst * 50) / (0.2 * 1000))).toBeLessThan(
+    expect(rel(row('W02').analytes.Al!.lodMethod!, (lodInst * 50) / (0.2 * 1000))).toBeLessThan(
       1e-9,
     );
-    expect(rel(row('W05').analytes.Al!.lodMethod, (lodInst * 50) / (0.5 * 1000))).toBeLessThan(
+    expect(rel(row('W05').analytes.Al!.lodMethod!, (lodInst * 50) / (0.5 * 1000))).toBeLessThan(
       1e-9,
     );
-    expect(rel(row('W02').analytes.Al!.loqMethod, (loqInst * 50) / (0.2 * 1000))).toBeLessThan(
+    expect(rel(row('W02').analytes.Al!.loqMethod!, (loqInst * 50) / (0.2 * 1000))).toBeLessThan(
       1e-9,
     );
   });
@@ -239,12 +264,12 @@ describe('evaluateCalibration — validasi & soft-flag', () => {
 
   it('QC gagal TIDAK melempar (soft-flag, ADR-0005)', () => {
     const bad: SampleRow[] = [
-      { sampleId: 'MB', sampleType: 'blank_method', ...base, readings: { Al: 0, Pb: 0 } },
+      { sampleId: 'MB', sampleType: 'blank_method', ...nullPrep, readings: { Al: 0, Pb: 0 } },
       { sampleId: 'S1', sampleType: 'sample', ...base, readings: { Al: AL(11), Pb: PB(12) } },
       {
         sampleId: 'CCV',
         sampleType: 'ccv',
-        ...base,
+        ...nullPrep,
         expectedConc: { Al: 100, Pb: 50 },
         readings: { Al: AL(200), Pb: PB(500) }, // jauh di luar batas
       },
@@ -253,5 +278,20 @@ describe('evaluateCalibration — validasi & soft-flag', () => {
     const out = evaluateCalibration(batch(bad));
     expect(out.qcStatus).toBe('INVALID_QC');
     expect(out.qcViolations.length).toBeGreaterThan(0);
+  });
+
+  it('menolak baris matriks padatan (sample, spike, duplicate) jika weight, volume, atau df bernilai null atau <= 0', () => {
+    const missingWeight: SampleRow[] = [
+      { sampleId: 'MB', sampleType: 'blank_method', ...nullPrep, readings: { Al: 0, Pb: 0 } },
+      {
+        sampleId: 'S1',
+        sampleType: 'sample',
+        weight: null,
+        volume: 50,
+        df: 1,
+        readings: { Al: AL(11), Pb: PB(12) },
+      },
+    ];
+    expect(() => evaluateCalibration(batch(missingWeight))).toThrow(/weight|volume|df/i);
   });
 });

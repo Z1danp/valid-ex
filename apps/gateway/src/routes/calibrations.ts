@@ -43,18 +43,56 @@ const StandardRowInputSchema: z.ZodType<components['schemas']['StandardRowInput'
   readings: z.record(z.string(), StandardPointReadingSchema),
 });
 
-const SampleRowInputSchema: z.ZodType<components['schemas']['SampleRowInput']> = z.object({
-  sampleId: z.string().min(1),
-  labSampleId: z.string().nullable().optional(),
-  sampleType: z.enum(['sample', 'blank_method', 'ccv', 'spike', 'duplicate']),
-  parentSampleId: z.string().nullable().optional(),
-  spikeAdded: z.record(z.string(), z.number()).nullable().optional(),
-  expectedConc: z.record(z.string(), z.number()).nullable().optional(),
-  weight: z.number().positive(),
-  volume: z.number().positive(),
-  df: z.number().positive(),
-  readings: z.record(z.string(), z.number()),
-});
+const SampleRowInputSchema: z.ZodType<components['schemas']['SampleRowInput']> = z
+  .object({
+    sampleId: z.string().min(1),
+    labSampleId: z.string().nullable().optional(),
+    sampleType: z.enum(['sample', 'blank_method', 'ccv', 'spike', 'duplicate']),
+    parentSampleId: z.string().nullable().optional(),
+    spikeAdded: z.record(z.string(), z.number()).nullable().optional(),
+    expectedConc: z.record(z.string(), z.number()).nullable().optional(),
+    weight: z.number().positive().nullable(),
+    volume: z.number().positive().nullable(),
+    df: z.number().positive().nullable(),
+    readings: z.record(z.string(), z.number()),
+  })
+  .superRefine((row, ctx) => {
+    const isSolid =
+      row.sampleType === 'sample' || row.sampleType === 'spike' || row.sampleType === 'duplicate';
+
+    if (isSolid) {
+      if (row.weight === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['weight'],
+          message: `weight is required (> 0) for sampleType ${row.sampleType}`,
+        });
+      }
+      if (row.volume === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['volume'],
+          message: `volume is required (> 0) for sampleType ${row.sampleType}`,
+        });
+      }
+      if (row.df === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['df'],
+          message: `df is required (> 0) for sampleType ${row.sampleType}`,
+        });
+      }
+      return;
+    }
+
+    if (row.weight !== null || row.volume !== null || row.df !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['weight'],
+        message: `weight, volume, and df must be null for solution-only sampleType ${row.sampleType}`,
+      });
+    }
+  });
 
 const CalibrationBatchRequestSchema: z.ZodType<components['schemas']['CalibrationBatchRequest']> =
   z.object({

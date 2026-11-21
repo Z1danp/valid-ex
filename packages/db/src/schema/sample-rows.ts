@@ -27,9 +27,9 @@ export const sampleRows = pgTable(
     sampleId: varchar('sample_id', { length: 255 }).notNull(),
     sampleType: sampleTypeEnum('sample_type').notNull(),
     parentSampleId: varchar('parent_sample_id', { length: 255 }),
-    weight: doublePrecision('weight').notNull(),
-    volume: doublePrecision('volume').notNull(),
-    df: doublePrecision('df').notNull(),
+    weight: doublePrecision('weight'),
+    volume: doublePrecision('volume'),
+    df: doublePrecision('df'),
     spikeAdded: jsonb('spike_added').$type<Record<string, number>>(),
     expectedConc: jsonb('expected_conc').$type<Record<string, number>>(),
     readings: jsonb('readings').$type<Record<string, number>>().notNull(),
@@ -53,6 +53,9 @@ export const sampleRows = pgTable(
       'sample_rows_lab_sample_id_trimmed_nonempty',
       sql`${table.labSampleId} IS NULL OR (length(btrim(${table.labSampleId})) > 0 AND ${table.labSampleId} = btrim(${table.labSampleId}))`,
     ),
-    check('sample_rows_df_positive', sql`${table.df} >= 0`),
+    check(
+      'sample_rows_prep_params_by_type_chk',
+      sql`(${table.sampleType} IN ('blank_method', 'ccv') AND ${table.weight} IS NULL AND ${table.volume} IS NULL AND ${table.df} IS NULL) OR (${table.sampleType} IN ('sample', 'spike', 'duplicate') AND ${table.weight} IS NOT NULL AND ${table.weight} > 0 AND ${table.volume} IS NOT NULL AND ${table.volume} > 0 AND ${table.df} IS NOT NULL AND ${table.df} > 0)`,
+    ),
   ],
 );

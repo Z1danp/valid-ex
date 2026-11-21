@@ -112,9 +112,9 @@ export interface SampleRow {
   spikeAdded?: Record<string, number> | null;
   /** Konsentrasi target teoritis (CCV) per analit (solutionConcUnit). */
   expectedConc?: Record<string, number> | null;
-  weight: number;
-  volume: number;
-  df: number;
+  weight: number | null;
+  volume: number | null;
+  df: number | null;
   /** Map analit -> signal (mode A) atau konsentrasi in-vial (mode B). */
   readings: Record<string, number>;
 }
@@ -168,10 +168,10 @@ export interface AnalyteSampleResult {
   concSolid: number | null;
   detectionZone: DetectionZone;
   reportedValue: string;
-  /** LOD metode PADA SAMPEL INI (solidResultUnit). */
-  lodMethod: number;
-  /** LOQ metode PADA SAMPEL INI (solidResultUnit). */
-  loqMethod: number;
+  /** LOD metode PADA SAMPEL INI (solidResultUnit). NULL untuk blank_method dan ccv. */
+  lodMethod: number | null;
+  /** LOQ metode PADA SAMPEL INI (solidResultUnit). NULL untuk blank_method dan ccv. */
+  loqMethod: number | null;
   rpd: number | null;
   spikeRecovery: number | null;
   ccvRecovery: number | null;
@@ -181,9 +181,9 @@ export interface EvaluatedSampleRow {
   sampleId: string;
   sampleType: SampleType;
   parentSampleId: string | null;
-  weight: number;
-  volume: number;
-  df: number;
+  weight: number | null;
+  volume: number | null;
+  df: number | null;
   analytes: Record<string, AnalyteSampleResult>;
 }
 

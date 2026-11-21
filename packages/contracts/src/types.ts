@@ -498,21 +498,20 @@ export interface components {
                 [key: string]: number;
             } | null;
             /**
-             * @description Bobot penimbangan sampel padatan (gram)
+             * @description Bobot penimbangan sampel padatan (gram). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv.
              * @example 0.2014
              */
-            weight: number;
+            weight: number | null;
             /**
-             * @description Volume akhir labu ukur preparasi (mL)
+             * @description Volume akhir labu ukur preparasi (mL). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv.
              * @example 50
              */
-            volume: number;
+            volume: number | null;
             /**
-             * @description Faktor pengenceran (Dilution Factor)
-             * @default 1
+             * @description Faktor pengenceran (Dilution Factor). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv.
              * @example 1
              */
-            df: number;
+            df: number | null;
             /**
              * @description Map nama analit -> nilai pembacaan alat (sinyal cps atau konsentrasi terhitung di vial)
              * @example {
@@ -599,20 +598,20 @@ export interface components {
             concSolid?: number | null;
             detectionZone: components["schemas"]["DetectionZone"];
             /**
-             * @description Format pelaporan resmi ISO 17025 ('ND', '< [LOQ_metode]', atau angka desimal)
+             * @description Format pelaporan resmi ISO 17025: untuk sampel matriks padatan (sample, spike, duplicate) bernilai 'ND', '< [LOQ_metode] [solidResultUnit]', atau '[concSolid] [solidResultUnit]'; untuk blank_method selalu 'ND'; untuk ccv menampilkan konsentrasi larutan terukur (cRaw) hasil pembacaan kurva kalibrasi dalam solutionConcUnit ('[cRaw] [solutionConcUnit]') untuk dibandingkan terhadap konsentrasi nominal standar (expectedConc).
              * @example 0.287 mg/kg
              */
             reportedValue: string;
             /**
-             * @description LOD metode PADA SAMPEL INI (solidResultUnit), dihitung dari W/V/dF sampel ini
+             * @description LOD metode PADA SAMPEL INI (solidResultUnit), dihitung dari W/V/dF sampel ini. NULL untuk blank_method dan ccv karena tidak melalui konversi matriks padatan.
              * @example 0.00125
              */
-            lodMethod: number;
+            lodMethod: number | null;
             /**
-             * @description LOQ metode PADA SAMPEL INI (solidResultUnit), dipakai pada string '< [LOQ_metode]'
+             * @description LOQ metode PADA SAMPEL INI (solidResultUnit), dipakai pada string '< [LOQ_metode]'. NULL untuk blank_method dan ccv karena tidak melalui konversi matriks padatan.
              * @example 0.00375
              */
-            loqMethod: number;
+            loqMethod: number | null;
             /**
              * @description % Relative Percent Difference jika baris ini adalah duplo. Bernilai null bila rata-rata pasangan <= 0 (undefined).
              * @example 1.72
@@ -647,11 +646,11 @@ export interface components {
             /** @example null */
             parentSampleId?: string | null;
             /** @example 0.2014 */
-            weight: number;
+            weight: number | null;
             /** @example 50 */
-            volume: number;
+            volume: number | null;
             /** @example 1 */
-            df: number;
+            df: number | null;
             /** @description Map nama analit -> hasil evaluasi metrologi */
             analytes: {
                 [key: string]: components["schemas"]["AnalyteSampleResult"];

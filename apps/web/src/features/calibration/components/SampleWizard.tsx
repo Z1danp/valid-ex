@@ -119,12 +119,12 @@ export default function SampleWizard({
               Tabel 2: Kontrol Mutu / QC (Blanko Metode, CCV, Matrix Spike, Duplo)
             </h2>
             <p className="text-xs text-slate-700 mt-0.5">
-              Memuat <code className="font-mono text-slate-900">blank_method</code> (tanpa bobot
-              sampel), <code className="font-mono text-slate-900">ccv</code>,{' '}
-              <code className="font-mono text-slate-900">spike</code>, dan{' '}
+              Memuat <code className="font-mono text-slate-900">blank_method</code> dan{' '}
+              <code className="font-mono text-slate-900">ccv</code> (larutan QC tanpa Bobot, Vol,
+              &amp; dF padatan), serta <code className="font-mono text-slate-900">spike</code> dan{' '}
               <code className="font-mono text-slate-900">duplicate</code>. Pilih{' '}
-              <code className="font-mono text-slate-900">Parent</code> dari daftar sampel yang
-              tersedia untuk baris <code className="font-mono text-slate-900">spike</code> dan{' '}
+              <code className="font-mono text-slate-900">Parent</code> dari daftar sampel untuk{' '}
+              <code className="font-mono text-slate-900">spike</code> dan{' '}
               <code className="font-mono text-slate-900">duplicate</code>.
             </p>
           </div>

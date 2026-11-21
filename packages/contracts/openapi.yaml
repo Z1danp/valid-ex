@@ -837,16 +837,18 @@ components:
             Pb: 1.0
         weight:
           type: number
-          description: "Bobot penimbangan sampel padatan (gram)"
+          nullable: true
+          description: "Bobot penimbangan sampel padatan (gram). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv."
           example: 0.2014
         volume:
           type: number
-          description: "Volume akhir labu ukur preparasi (mL)"
+          nullable: true
+          description: "Volume akhir labu ukur preparasi (mL). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv."
           example: 50.0
         df:
           type: number
-          default: 1.0
-          description: "Faktor pengenceran (Dilution Factor)"
+          nullable: true
+          description: "Faktor pengenceran (Dilution Factor). Wajib > 0 untuk sample, spike, dan duplicate; wajib null untuk blank_method dan ccv."
           example: 1.0
         readings:
           type: object
@@ -956,15 +958,17 @@ components:
           $ref: '#/components/schemas/DetectionZone'
         reportedValue:
           type: string
-          description: "Format pelaporan resmi ISO 17025 ('ND', '< [LOQ_metode]', atau angka desimal)"
+          description: "Format pelaporan resmi ISO 17025: untuk sampel matriks padatan (sample, spike, duplicate) bernilai 'ND', '< [LOQ_metode] [solidResultUnit]', atau '[concSolid] [solidResultUnit]'; untuk blank_method selalu 'ND'; untuk ccv menampilkan konsentrasi larutan terukur (cRaw) hasil pembacaan kurva kalibrasi dalam solutionConcUnit ('[cRaw] [solutionConcUnit]') untuk dibandingkan terhadap konsentrasi nominal standar (expectedConc)."
           example: "0.287 mg/kg"
         lodMethod:
           type: number
-          description: "LOD metode PADA SAMPEL INI (solidResultUnit), dihitung dari W/V/dF sampel ini"
+          nullable: true
+          description: "LOD metode PADA SAMPEL INI (solidResultUnit), dihitung dari W/V/dF sampel ini. NULL untuk blank_method dan ccv karena tidak melalui konversi matriks padatan."
           example: 0.00125
         loqMethod:
           type: number
-          description: "LOQ metode PADA SAMPEL INI (solidResultUnit), dipakai pada string '< [LOQ_metode]'"
+          nullable: true
+          description: "LOQ metode PADA SAMPEL INI (solidResultUnit), dipakai pada string '< [LOQ_metode]'. NULL untuk blank_method dan ccv karena tidak melalui konversi matriks padatan."
           example: 0.00375
         rpd:
           type: number
@@ -1007,12 +1011,15 @@ components:
           example: null
         weight:
           type: number
+          nullable: true
           example: 0.2014
         volume:
           type: number
+          nullable: true
           example: 50.0
         df:
           type: number
+          nullable: true
           example: 1.0
         analytes:
           type: object

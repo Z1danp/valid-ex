@@ -93,9 +93,9 @@ function buildCalibrationPayload(qcProfileId: string) {
       {
         sampleId: 'Blank Mars',
         sampleType: 'blank_method',
-        weight: 0.5,
-        volume: 50,
-        df: 1,
+        weight: null,
+        volume: null,
+        df: null,
         readings: { Pb: 0.01, Cd: 0.005 },
       },
       {
@@ -111,9 +111,9 @@ function buildCalibrationPayload(qcProfileId: string) {
         sampleId: 'CCV-Mid',
         sampleType: 'ccv',
         expectedConc: { Pb: 5.0, Cd: 2.5 },
-        weight: 0.5,
-        volume: 50,
-        df: 1,
+        weight: null,
+        volume: null,
+        df: null,
         readings: { Pb: 5.05, Cd: 2.48 },
       },
     ],
@@ -218,14 +218,86 @@ describe('Stage 4C: QC Criteria Profiles & ACID Calibration Endpoints', () => {
     expect(batch.qcStatus).toBe('PASSED');
     expect(batch.qcProfileRef).toEqual({ id: profile.id, version: 1 });
     expect(batch.evaluatedSamples).toHaveLength(3);
+    expect(batch.evaluatedSamples[0].sampleId).toBe('Blank Mars');
+    expect(batch.evaluatedSamples[0].weight).toBeNull();
+    expect(batch.evaluatedSamples[0].volume).toBeNull();
+    expect(batch.evaluatedSamples[0].df).toBeNull();
+    expect(batch.evaluatedSamples[0].analytes.Pb.lodMethod).toBeNull();
+    expect(batch.evaluatedSamples[0].analytes.Pb.loqMethod).toBeNull();
+    expect(batch.evaluatedSamples[0].analytes.Pb.concSolid).toBeNull();
+    expect(batch.evaluatedSamples[0].analytes.Pb.reportedValue).toBe('ND');
+
     expect(batch.evaluatedSamples[1].sampleId).toBe('S-101');
     expect(batch.evaluatedSamples[1].analytes.Pb.detectionZone).toBe('VALID_QUANTIFICATION');
     expect(batch.evaluatedSamples[1].analytes.Cd.detectionZone).toBe('VALID_QUANTIFICATION');
+
+    expect(batch.evaluatedSamples[2].sampleId).toBe('CCV-Mid');
+    expect(batch.evaluatedSamples[2].weight).toBeNull();
+    expect(batch.evaluatedSamples[2].analytes.Pb.lodMethod).toBeNull();
+    expect(batch.evaluatedSamples[2].analytes.Pb.loqMethod).toBeNull();
+    expect(batch.evaluatedSamples[2].analytes.Pb.concSolid).toBeNull();
+    expect(batch.evaluatedSamples[2].analytes.Pb.reportedValue).toBe('5.050 ppb');
 
     // Verify audit log was persisted inside the ACID transaction
     const logs = await db.select().from(auditLogs);
     expect(logs).toHaveLength(1);
     expect(logs[0]?.action).toBe('calibration.persisted');
+  });
+
+  it('POST /api/v1/calibrations rejects null prep params on sample and rejects non-null prep params on blank_method/ccv (400)', async () => {
+    const profRes = await app.request('/api/v1/qc-profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+      body: JSON.stringify(VALID_QC_PROFILE_INPUT),
+    });
+    const profile = await profRes.json();
+
+    const sampleNullWeight = buildCalibrationPayload(profile.id);
+    (sampleNullWeight.samples[1] as { weight: number | null }).weight = null;
+    const res1 = await app.request('/api/v1/calibrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+      body: JSON.stringify(sampleNullWeight),
+    });
+    expect(res1.status).toBe(400);
+
+    const blankWithWeight = buildCalibrationPayload(profile.id);
+    (blankWithWeight.samples[0] as { weight: number | null }).weight = 0.5;
+    const res2 = await app.request('/api/v1/calibrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+      body: JSON.stringify(blankWithWeight),
+    });
+    expect(res2.status).toBe(400);
+
+    const ccvWithWeight = buildCalibrationPayload(profile.id);
+    (
+      ccvWithWeight.samples[2] as {
+        weight: number | null;
+        volume: number | null;
+        df: number | null;
+      }
+    ).weight = 0.5;
+    (
+      ccvWithWeight.samples[2] as {
+        weight: number | null;
+        volume: number | null;
+        df: number | null;
+      }
+    ).volume = 50;
+    (
+      ccvWithWeight.samples[2] as {
+        weight: number | null;
+        volume: number | null;
+        df: number | null;
+      }
+    ).df = 1;
+    const res3 = await app.request('/api/v1/calibrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+      body: JSON.stringify(ccvWithWeight),
+    });
+    expect(res3.status).toBe(400);
   });
 
   it('POST /api/v1/calibrations soft-flags INVALID_QC (201) when CCV drifts out of bounds (Invariant D4)', async () => {

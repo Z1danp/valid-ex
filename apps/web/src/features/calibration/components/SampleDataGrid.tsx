@@ -149,29 +149,32 @@ export function SampleDataGrid({
       }
 
       if (col === weightCol) {
+        const weight = sample.weight ?? 0.2;
         return {
           kind: GridCellKind.Number,
-          data: sample.weight,
-          displayData: sample.weight.toFixed(4),
+          data: weight,
+          displayData: weight.toFixed(4),
           allowOverlay: true,
           readonly: false,
         };
       }
 
       if (col === volCol) {
+        const vol = sample.vol ?? 50;
         return {
           kind: GridCellKind.Number,
-          data: sample.vol,
-          displayData: String(sample.vol),
+          data: vol,
+          displayData: String(vol),
           allowOverlay: true,
           readonly: false,
         };
       }
 
+      const df = sample.df ?? 1;
       return {
         kind: GridCellKind.Number,
-        data: sample.df,
-        displayData: String(sample.df),
+        data: df,
+        displayData: String(df),
         allowOverlay: true,
         readonly: false,
       };
@@ -206,17 +209,17 @@ export function SampleDataGrid({
       } else if (col === weightCol) {
         updated[row] = {
           ...target,
-          weight: extractCellNumber(newValue, target.weight, true),
+          weight: extractCellNumber(newValue, target.weight ?? 0.2, true),
         };
       } else if (col === volCol) {
         updated[row] = {
           ...target,
-          vol: extractCellNumber(newValue, target.vol, true),
+          vol: extractCellNumber(newValue, target.vol ?? 50, true),
         };
       } else if (col === dfCol) {
         updated[row] = {
           ...target,
-          df: extractCellNumber(newValue, target.df, true),
+          df: extractCellNumber(newValue, target.df ?? 1, true),
         };
       }
 
@@ -279,11 +282,11 @@ export function SampleDataGrid({
               );
             }
           } else if (targetCol === weightCol) {
-            rowItem.weight = parseNumberFromInput(clean, rowItem.weight, true);
+            rowItem.weight = parseNumberFromInput(clean, rowItem.weight ?? 0.2, true);
           } else if (targetCol === volCol) {
-            rowItem.vol = parseNumberFromInput(clean, rowItem.vol, true);
+            rowItem.vol = parseNumberFromInput(clean, rowItem.vol ?? 50, true);
           } else if (targetCol === dfCol) {
-            rowItem.df = parseNumberFromInput(clean, rowItem.df, true);
+            rowItem.df = parseNumberFromInput(clean, rowItem.df ?? 1, true);
           }
         });
 

@@ -7,9 +7,9 @@ export interface SampleAnalyteResult {
   sampleId: string;
   sampleType: SampleType;
   parentSampleId?: string;
-  weight: number;
-  volume: number;
-  df: number;
+  weight: number | null;
+  volume: number | null;
+  df: number | null;
   signal: number;
   cRaw: number;
   cNet: number;
@@ -40,7 +40,8 @@ export default function SampleEvaluationTable({
             Tabel Evaluasi Sampel untuk Analit {analyteName} ({analyteSymbol})
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Gating 3-Zona dilakukan di larutan (ppb) &bull; Kuantifikasi padatan dalam mg/kg
+            Gating 3-Zona dilakukan di larutan (ppb) &bull; Hasil Resmi menampilkan mg/kg (sampel
+            padatan), ND (blanko metode), atau konsentrasi larutan terukur C_raw (CCV)
           </p>
         </div>
         <span className="text-[11px] font-mono text-slate-500">
@@ -77,9 +78,11 @@ export default function SampleEvaluationTable({
                   </span>
                 </td>
                 <td className="p-2.5 text-slate-500">{row.parentSampleId || '-'}</td>
-                <td className="p-2.5 text-right">{row.weight.toFixed(4)}</td>
-                <td className="p-2.5 text-right">{row.volume}</td>
-                <td className="p-2.5 text-right">{row.df}</td>
+                <td className="p-2.5 text-right">
+                  {row.weight !== null ? row.weight.toFixed(4) : '-'}
+                </td>
+                <td className="p-2.5 text-right">{row.volume ?? '-'}</td>
+                <td className="p-2.5 text-right">{row.df ?? '-'}</td>
                 <td className="p-2.5 text-right font-medium text-slate-900">
                   {row.signal.toFixed(1)}
                 </td>

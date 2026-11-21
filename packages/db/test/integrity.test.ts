@@ -123,32 +123,48 @@ async function seedOwnerWithProfile(db: TestDb): Promise<{ id: string }> {
 function batch(userId: string, sampleCount = 2): CalibrationBatchInsert {
   const sampleRowsInput: NonNullable<CalibrationBatchInsert['sampleRows']> = Array.from(
     { length: sampleCount },
-    (_, index) => ({
-      sampleId: index === 0 ? 'Blanko' : `S-${index}`,
-      labSampleId: index === 0 ? '   ' : `  LAB-${index}  `,
-      sampleType: index === 0 ? 'blank_method' : 'sample',
-      parentSampleId: null,
-      weight: 0.2014,
-      volume: 50,
-      df: 1,
-      spikeAdded: null,
-      expectedConc: null,
-      readings: { Pb: 1.16 + index },
-      analyteResults: {
-        Pb: {
-          cRaw: 1.16,
-          cNet: 1.11,
-          concSolid: RESIDUAL,
-          detectionZone: 'VALID_QUANTIFICATION',
-          reportedValue: '0.276 mg/kg',
-          lodMethod: 0.03,
-          loqMethod: 0.1,
-          rpd: null,
-          spikeRecovery: null,
-          ccvRecovery: null,
+    (_, index) => {
+      const isBlank = index === 0;
+      return {
+        sampleId: isBlank ? 'Blanko' : `S-${index}`,
+        labSampleId: isBlank ? '   ' : `  LAB-${index}  `,
+        sampleType: isBlank ? 'blank_method' : 'sample',
+        parentSampleId: null,
+        weight: isBlank ? null : 0.2014,
+        volume: isBlank ? null : 50,
+        df: isBlank ? null : 1,
+        spikeAdded: null,
+        expectedConc: null,
+        readings: { Pb: 1.16 + index },
+        analyteResults: {
+          Pb: isBlank
+            ? {
+                cRaw: 1.16,
+                cNet: 0,
+                concSolid: null,
+                detectionZone: 'NOT_DETECTED',
+                reportedValue: 'ND',
+                lodMethod: null,
+                loqMethod: null,
+                rpd: null,
+                spikeRecovery: null,
+                ccvRecovery: null,
+              }
+            : {
+                cRaw: 1.16 + index,
+                cNet: 1.11 + index,
+                concSolid: RESIDUAL,
+                detectionZone: 'VALID_QUANTIFICATION',
+                reportedValue: '0.276 mg/kg',
+                lodMethod: 0.03,
+                loqMethod: 0.1,
+                rpd: null,
+                spikeRecovery: null,
+                ccvRecovery: null,
+              },
         },
-      },
-    }),
+      };
+    },
   );
 
   return {
@@ -343,7 +359,12 @@ describe('@valid-ex/db — Milestone 3 (ADR-0008) integrity & transactions', () 
       .from(sampleRows)
       .where(eq(sampleRows.calibrationId, persisted.calibrationId));
     expect(sRows).toHaveLength(3);
-    expect(Object.is(sRows[0]?.analyteResults.Pb?.concSolid, RESIDUAL)).toBe(true);
+    const blankRow = sRows.find((r) => r.sampleType === 'blank_method');
+    const sampleRow = sRows.find((r) => r.sampleType === 'sample');
+    expect(blankRow?.weight).toBeNull();
+    expect(blankRow?.volume).toBeNull();
+    expect(blankRow?.df).toBeNull();
+    expect(Object.is(sampleRow?.analyteResults.Pb?.concSolid, RESIDUAL)).toBe(true);
   });
 
   it('Skenario 4: enforces 250 sample row cap, unique sample_id per batch, and trimmed lab_sample_id', async () => {
@@ -475,6 +496,80 @@ describe('@valid-ex/db — Milestone 3 (ADR-0008) integrity & transactions', () 
     await expectDbError(
       () => db.delete(auditLogs).where(eq(auditLogs.id, persisted.auditLogsId)),
       /audit_logs forbids DELETE/,
+    );
+  });
+
+  it('Skenario 7: enforces sample_rows_prep_params_by_type_chk (NULL prep params for blank_method/ccv, positive for sample/spike/duplicate)', async () => {
+    const db = await createTestDb();
+    const owner = await seedOwnerWithProfile(db);
+    const gateway = asGatewayDb(db);
+    const persisted = await persistCalibrationBatch(gateway, batch(owner.id, 2));
+
+    // Valid CCV with NULL weight, volume, df -> accepted
+    await expect(
+      db.insert(sampleRows).values({
+        calibrationId: persisted.calibrationId,
+        userId: owner.id,
+        sampleId: 'CCV-Valid',
+        sampleType: 'ccv',
+        weight: null,
+        volume: null,
+        df: null,
+        expectedConc: { Pb: 5 },
+        readings: { Pb: 5.02 },
+        analyteResults: {},
+      }),
+    ).resolves.toBeDefined();
+
+    // Invalid ccv carrying non-null prep params -> rejected
+    await expectDbError(
+      () =>
+        db.insert(sampleRows).values({
+          calibrationId: persisted.calibrationId,
+          userId: owner.id,
+          sampleId: 'CCV-With-Weight',
+          sampleType: 'ccv',
+          weight: 0.2,
+          volume: 50,
+          df: 1,
+          readings: { Pb: 5 },
+          analyteResults: {},
+        }),
+      /sample_rows_prep_params_by_type_chk/,
+    );
+
+    // Invalid blank_method carrying non-null prep params -> rejected
+    await expectDbError(
+      () =>
+        db.insert(sampleRows).values({
+          calibrationId: persisted.calibrationId,
+          userId: owner.id,
+          sampleId: 'Blank-With-Weight',
+          sampleType: 'blank_method',
+          weight: 0.2,
+          volume: 50,
+          df: 1,
+          readings: { Pb: 0.05 },
+          analyteResults: {},
+        }),
+      /sample_rows_prep_params_by_type_chk/,
+    );
+
+    // Invalid solid sample with NULL weight -> rejected
+    await expectDbError(
+      () =>
+        db.insert(sampleRows).values({
+          calibrationId: persisted.calibrationId,
+          userId: owner.id,
+          sampleId: 'Sample-Null-Weight',
+          sampleType: 'sample',
+          weight: null,
+          volume: 50,
+          df: 1,
+          readings: { Pb: 10 },
+          analyteResults: {},
+        }),
+      /sample_rows_prep_params_by_type_chk/,
     );
   });
 });

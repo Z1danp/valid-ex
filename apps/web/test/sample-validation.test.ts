@@ -5,7 +5,7 @@ import {
   ROUTINE_SAMPLE_TYPES,
   getAvailableParentOptions,
   isParentAllowed,
-  isWeightRequired,
+  isPrepParamsRequired,
   parseSampleTypeFromSet,
   removeAnalyteKeyInRows,
   renameAnalyteKeysInRows,
@@ -30,21 +30,21 @@ function makeRow(overrides: Partial<SampleRowState>): SampleRowState {
   };
 }
 
-test('isParentAllowed permits only spike and duplicate; isWeightRequired skips blank_method', () => {
+test('isParentAllowed permits only spike and duplicate; isPrepParamsRequired skips blank_method and ccv', () => {
   assert.equal(isParentAllowed('spike'), true);
   assert.equal(isParentAllowed('duplicate'), true);
   assert.equal(isParentAllowed('sample'), false);
   assert.equal(isParentAllowed('blank_method'), false);
   assert.equal(isParentAllowed('ccv'), false);
 
-  assert.equal(isWeightRequired('blank_method'), false);
-  assert.equal(isWeightRequired('sample'), true);
-  assert.equal(isWeightRequired('ccv'), true);
-  assert.equal(isWeightRequired('spike'), true);
-  assert.equal(isWeightRequired('duplicate'), true);
+  assert.equal(isPrepParamsRequired('blank_method'), false);
+  assert.equal(isPrepParamsRequired('ccv'), false);
+  assert.equal(isPrepParamsRequired('sample'), true);
+  assert.equal(isPrepParamsRequired('spike'), true);
+  assert.equal(isPrepParamsRequired('duplicate'), true);
 });
 
-test('sanitizeSampleRow clears parent, expectedConc, and spikeAdded when incompatible with sampleType', () => {
+test('sanitizeSampleRow clears parent/expectedConc/spikeAdded and sets weight/vol/df null for blank_method and ccv', () => {
   const ccvFromSpike = sanitizeSampleRow(
     makeRow({
       id: 'QC1',
@@ -55,18 +55,39 @@ test('sanitizeSampleRow clears parent, expectedConc, and spikeAdded when incompa
     }),
   );
   assert.equal(ccvFromSpike.parent, '');
+  assert.equal(ccvFromSpike.weight, null);
+  assert.equal(ccvFromSpike.vol, null);
+  assert.equal(ccvFromSpike.df, null);
   assert.equal(ccvFromSpike.spikeAdded, undefined);
   assert.deepEqual(ccvFromSpike.expectedConc, { Cd: 50 });
+
+  const blankFromSample = sanitizeSampleRow(
+    makeRow({
+      id: 'MB',
+      type: 'blank_method',
+      expectedConc: { Cd: 50 },
+    }),
+  );
+  assert.equal(blankFromSample.weight, null);
+  assert.equal(blankFromSample.vol, null);
+  assert.equal(blankFromSample.df, null);
+  assert.equal(blankFromSample.expectedConc, undefined);
 
   const dupFromCcv = sanitizeSampleRow(
     makeRow({
       id: 'D1',
       type: 'duplicate',
       parent: 'S1',
+      weight: null,
+      vol: null,
+      df: null,
       expectedConc: { Cd: 50 },
     }),
   );
   assert.equal(dupFromCcv.parent, 'S1');
+  assert.equal(dupFromCcv.weight, 0.2);
+  assert.equal(dupFromCcv.vol, 50);
+  assert.equal(dupFromCcv.df, 1);
   assert.equal(dupFromCcv.expectedConc, undefined);
 });
 
@@ -143,6 +164,9 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
     makeRow({
       id: 'CCV1',
       type: 'ccv',
+      weight: null,
+      vol: null,
+      df: null,
       expectedConc: { Al: 50, Cd: 0 },
       readings: { Al: 100, Cd: 50 },
     }),
@@ -150,6 +174,7 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
       id: 'SP1',
       type: 'spike',
       parent: 'MISSING',
+      weight: null,
       spikeAdded: { Al: 10 },
       readings: { Al: 120, Cd: 60 },
     }),
@@ -163,6 +188,7 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
   assert.match(messages, /expectedConc/);
   assert.match(messages, /spikeAdded/);
   assert.match(messages, /Parent "MISSING"/);
+  assert.match(messages, /SP1: Bobot/);
 
   const overLimitSamples = Array.from({ length: 248 }, (_, idx) =>
     makeRow({
@@ -175,6 +201,9 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
     makeRow({
       id: idx === 0 ? 'MB' : `CCV${idx}`,
       type: idx === 0 ? 'blank_method' : 'ccv',
+      weight: null,
+      vol: null,
+      df: null,
       expectedConc: idx === 0 ? undefined : { Al: 50, Cd: 10 },
       readings: { Al: 10, Cd: 5 },
     }),
@@ -183,7 +212,7 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
   assert.ok(limitIssues.some((i) => i.scope === 'batch' && i.message.includes('250')));
 });
 
-test('validateBatchSamples passes when blank_method is in qcRows without weight and toSampleRowInputs normalizes weight to 1', () => {
+test('validateBatchSamples passes when blank_method and ccv have null prep params and toSampleRowInputs preserves null', () => {
   const analytes = ['Al', 'Cd'];
   const sampleRows: SampleRowState[] = [
     makeRow({ id: 'S1', labSampleId: ' 291843 ', type: 'sample', readings: { Al: 500, Cd: 100 } }),
@@ -193,13 +222,18 @@ test('validateBatchSamples passes when blank_method is in qcRows without weight 
       id: 'MB',
       labSampleId: '   ',
       type: 'blank_method',
-      weight: 0,
+      weight: null,
+      vol: null,
+      df: null,
       readings: { Al: 10, Cd: 2, Old: 99 },
     }),
     makeRow({
       id: 'CCV1',
       type: 'ccv',
       parent: 'SHOULD_BE_CLEARED',
+      weight: null,
+      vol: null,
+      df: null,
       expectedConc: { Al: 50, Cd: 10, Old: 1 },
       readings: { Al: 250, Cd: 50 },
     }),
@@ -224,6 +258,7 @@ test('validateBatchSamples passes when blank_method is in qcRows without weight 
   assert.equal(dto.length, 5);
   assert.equal(dto[0]?.sampleId, 'S1');
   assert.equal(dto[0]?.labSampleId, '291843');
+  assert.equal(dto[0]?.weight, 0.2);
   assert.deepEqual(dto[1], {
     sampleId: 'MB',
     labSampleId: null,
@@ -231,17 +266,28 @@ test('validateBatchSamples passes when blank_method is in qcRows without weight 
     parentSampleId: null,
     expectedConc: null,
     spikeAdded: null,
-    weight: 1,
-    volume: 50,
-    df: 1,
+    weight: null,
+    volume: null,
+    df: null,
     readings: { Al: 10, Cd: 2 },
   });
-  assert.deepEqual(dto[2]?.parentSampleId, null);
-  assert.deepEqual(dto[2]?.expectedConc, { Al: 50, Cd: 10 });
-  assert.equal(dto[2]?.spikeAdded, null);
+  assert.deepEqual(dto[2], {
+    sampleId: 'CCV1',
+    labSampleId: null,
+    sampleType: 'ccv',
+    parentSampleId: null,
+    expectedConc: { Al: 50, Cd: 10 },
+    spikeAdded: null,
+    weight: null,
+    volume: null,
+    df: null,
+    readings: { Al: 250, Cd: 50 },
+  });
   assert.equal(dto[3]?.parentSampleId, 'S1');
   assert.deepEqual(dto[3]?.spikeAdded, { Al: 20, Cd: 5 });
+  assert.equal(dto[3]?.weight, 0.2);
   assert.equal(dto[4]?.parentSampleId, 'S1');
   assert.equal(dto[4]?.expectedConc, null);
   assert.equal(dto[4]?.spikeAdded, null);
+  assert.equal(dto[4]?.volume, 50);
 });

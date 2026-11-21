@@ -13,13 +13,13 @@ export async function createTestDb(): Promise<{ db: Database; client: PGlite }> 
   const client = new PGlite();
   const sql0 = readFileSync(resolve(MIGRATIONS_DIR, '0000_crazy_synch.sql'), 'utf8');
   const sql1 = readFileSync(resolve(MIGRATIONS_DIR, '0001_integrity_guards.sql'), 'utf8');
+  const sql2 = readFileSync(resolve(MIGRATIONS_DIR, '0002_nullable_qc_prep_params.sql'), 'utf8');
 
-  for (const statement of sql0.split('--> statement-breakpoint')) {
-    if (statement.trim()) {
-      await client.exec(statement);
-    }
-  }
-  for (const statement of sql1.split('--> statement-breakpoint')) {
+  for (const statement of [
+    ...sql0.split('--> statement-breakpoint'),
+    ...sql1.split('--> statement-breakpoint'),
+    ...sql2.split('--> statement-breakpoint'),
+  ]) {
     if (statement.trim()) {
       await client.exec(statement);
     }

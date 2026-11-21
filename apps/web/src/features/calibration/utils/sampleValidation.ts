@@ -8,9 +8,9 @@ export interface SampleRowState {
   labSampleId?: string;
   type: SampleType;
   parent?: string;
-  weight: number;
-  vol: number;
-  df: number;
+  weight: number | null;
+  vol: number | null;
+  df: number | null;
   expectedConc?: Record<string, number>;
   spikeAdded?: Record<string, number>;
   readings: Record<string, number>;
@@ -80,8 +80,8 @@ export function isParentAllowed(type: SampleType): boolean {
   return type === 'spike' || type === 'duplicate';
 }
 
-export function isWeightRequired(type: SampleType): boolean {
-  return type !== 'blank_method';
+export function isPrepParamsRequired(type: SampleType): boolean {
+  return type === 'sample' || type === 'spike' || type === 'duplicate';
 }
 
 export function parseSampleTypeFromSet(
@@ -94,9 +94,21 @@ export function parseSampleTypeFromSet(
 }
 
 export function sanitizeSampleRow(row: SampleRowState): SampleRowState {
+  const needsPrep = isPrepParamsRequired(row.type);
   return {
     ...row,
     parent: isParentAllowed(row.type) ? (row.parent ?? '') : '',
+    weight: needsPrep
+      ? row.weight !== null && Number.isFinite(row.weight) && row.weight > 0
+        ? row.weight
+        : 0.2
+      : null,
+    vol: needsPrep
+      ? row.vol !== null && Number.isFinite(row.vol) && row.vol > 0
+        ? row.vol
+        : 50
+      : null,
+    df: needsPrep ? (row.df !== null && Number.isFinite(row.df) && row.df > 0 ? row.df : 1) : null,
     expectedConc: row.type === 'ccv' ? row.expectedConc : undefined,
     spikeAdded: row.type === 'spike' ? row.spikeAdded : undefined,
   };
@@ -288,26 +300,28 @@ export function validateBatchSamples(
       });
     }
 
-    if (isWeightRequired(row.type) && (!Number.isFinite(row.weight) || row.weight <= 0)) {
-      issues.push({
-        scope,
-        sampleId: cleanId,
-        message: `${displayId}: Bobot harus lebih besar dari 0.`,
-      });
-    }
-    if (!Number.isFinite(row.vol) || row.vol <= 0) {
-      issues.push({
-        scope,
-        sampleId: cleanId,
-        message: `${displayId}: Volume harus lebih besar dari 0.`,
-      });
-    }
-    if (!Number.isFinite(row.df) || row.df <= 0) {
-      issues.push({
-        scope,
-        sampleId: cleanId,
-        message: `${displayId}: dF harus lebih besar dari 0.`,
-      });
+    if (isPrepParamsRequired(row.type)) {
+      if (row.weight === null || !Number.isFinite(row.weight) || row.weight <= 0) {
+        issues.push({
+          scope,
+          sampleId: cleanId,
+          message: `${displayId}: Bobot harus lebih besar dari 0.`,
+        });
+      }
+      if (row.vol === null || !Number.isFinite(row.vol) || row.vol <= 0) {
+        issues.push({
+          scope,
+          sampleId: cleanId,
+          message: `${displayId}: Volume harus lebih besar dari 0.`,
+        });
+      }
+      if (row.df === null || !Number.isFinite(row.df) || row.df <= 0) {
+        issues.push({
+          scope,
+          sampleId: cleanId,
+          message: `${displayId}: dF harus lebih besar dari 0.`,
+        });
+      }
     }
 
     const missingReadings = analytes.filter((analyte) => {
@@ -377,12 +391,7 @@ export function toSampleRowInputs(
   return [...sampleRows, ...qcRows].map((row) => {
     const trimmedLabId = row.labSampleId?.trim();
     const parentId = isParentAllowed(row.type) ? row.parent?.trim() || null : null;
-    // Method blanks have no solid weight; send 1 as a positive nominal divisor for gateway schema and Excel formulas.
-    const normalizedWeight = isWeightRequired(row.type)
-      ? row.weight
-      : row.weight > 0 && Number.isFinite(row.weight)
-        ? row.weight
-        : 1;
+    const needsPrep = isPrepParamsRequired(row.type);
 
     return {
       sampleId: row.id.trim(),
@@ -392,9 +401,9 @@ export function toSampleRowInputs(
       parentSampleId: parentId,
       expectedConc: row.type === 'ccv' ? pickAnalyteNumbers(row.expectedConc, analytes) : null,
       spikeAdded: row.type === 'spike' ? pickAnalyteNumbers(row.spikeAdded, analytes) : null,
-      weight: normalizedWeight,
-      volume: row.vol,
-      df: row.df,
+      weight: needsPrep ? (row.weight ?? 0.2) : null,
+      volume: needsPrep ? (row.vol ?? 50) : null,
+      df: needsPrep ? (row.df ?? 1) : null,
       readings: pickAnalyteNumbers(row.readings, analytes, 0),
     };
   });

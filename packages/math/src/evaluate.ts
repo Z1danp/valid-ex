@@ -8,6 +8,7 @@ import type {
   QCStatus,
   QCViolation,
   EvaluatedSampleRow,
+  SampleType,
 } from './types';
 import {
   selectRecoveryBand,
@@ -26,6 +27,10 @@ import {
   type SolidConversionParams,
   selectRpdBand,
 } from './index';
+
+export function isSolidSampleType(sampleType: SampleType): boolean {
+  return sampleType === 'sample' || sampleType === 'spike' || sampleType === 'duplicate';
+}
 
 /**
  * Orkestrator utama (ADR-0003: isomorphic zero-drift).
@@ -191,6 +196,27 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
   // =========================================================================
   for (const sample of input.samples) {
     const analytesResult: Record<string, AnalyteSampleResult> = {};
+    const isSolid = isSolidSampleType(sample.sampleType);
+
+    if (
+      isSolid &&
+      (sample.weight === null ||
+        sample.weight === undefined ||
+        !Number.isFinite(sample.weight) ||
+        sample.weight <= 0 ||
+        sample.volume === null ||
+        sample.volume === undefined ||
+        !Number.isFinite(sample.volume) ||
+        sample.volume <= 0 ||
+        sample.df === null ||
+        sample.df === undefined ||
+        !Number.isFinite(sample.df) ||
+        sample.df <= 0)
+    ) {
+      throw new Error(
+        `Solid sample ${sample.sampleId} (${sample.sampleType}) requires positive weight, volume, and df`,
+      );
+    }
 
     for (const analyte of input.analytes) {
       const criteria = analyteContext[analyte]!.criteria;
@@ -217,40 +243,48 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
         analyteContext[analyte]!.metrics.loqInstrument,
       );
 
-      // Konversi unit: W/V/df dari SAMPLE ini + unit dari batch
-      const conversionParams: SolidConversionParams = {
-        volume: sample.volume,
-        volumeUnit: input.units.volumeUnit,
-        df: sample.df,
-        weight: sample.weight,
-        weightUnit: input.units.weightUnit,
-        solutionConcUnit: input.units.solutionConcUnit,
-        solidResultUnit: input.units.solidResultUnit,
-      };
+      let lodMethod: number | null = null;
+      let loqMethod: number | null = null;
+      let concSolid: number | null = null;
+      let reportedValue: string;
 
-      // lodMethod/loqMethod = batas metode di PADATAN untuk sampel ini (skala 1/berat)
-      const lodMethod = toSolidConcentration(
-        analyteContext[analyte]!.metrics.lodInstrument,
-        conversionParams,
-      );
-      const loqMethod = toSolidConcentration(
-        analyteContext[analyte]!.metrics.loqInstrument,
-        conversionParams,
-      );
+      if (isSolid) {
+        const conversionParams: SolidConversionParams = {
+          volume: sample.volume!,
+          volumeUnit: input.units.volumeUnit,
+          df: sample.df!,
+          weight: sample.weight!,
+          weightUnit: input.units.weightUnit,
+          solutionConcUnit: input.units.solutionConcUnit,
+          solidResultUnit: input.units.solidResultUnit,
+        };
 
-      // concSolid hanya diisi kalau zone valid; selain itu null (ND / qualitative)
-      const concSolid =
-        zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null;
+        lodMethod = toSolidConcentration(
+          analyteContext[analyte]!.metrics.lodInstrument,
+          conversionParams,
+        );
+        loqMethod = toSolidConcentration(
+          analyteContext[analyte]!.metrics.loqInstrument,
+          conversionParams,
+        );
 
-      // TODO [4c]: reportedValue = formatReportedValue({ zone, concSolid, loqMethod, solidResultUnit })
-      const reportedValue = formatReportedValue({
-        zone,
-        concSolid,
-        loqMethod,
-        solidResultUnit: conversionParams.solidResultUnit,
-      });
-      // TODO [4d]: analytesResult[analyte] = { cRaw, cNet, concSolid, detectionZone: zone,
-      //              reportedValue, lodMethod, loqMethod, rpd: null, spikeRecovery: null, ccvRecovery: null }
+        concSolid =
+          zone === 'VALID_QUANTIFICATION' ? toSolidConcentration(cNet, conversionParams) : null;
+
+        reportedValue = formatReportedValue({
+          zone,
+          concSolid,
+          loqMethod,
+          solidResultUnit: conversionParams.solidResultUnit,
+        });
+      } else {
+        // Solution-only QC (blank_method, ccv) never undergoes solid matrix conversion.
+        reportedValue =
+          sample.sampleType === 'blank_method'
+            ? 'ND'
+            : `${cRaw.toFixed(3)} ${input.units.solutionConcUnit}`;
+      }
+
       analytesResult[analyte] = {
         cRaw,
         cNet,
@@ -377,9 +411,9 @@ export function evaluateCalibration(input: CalibrationInput): CalibrationOutput 
       sampleId: sample.sampleId ?? null,
       sampleType: sample.sampleType,
       parentSampleId: sample.parentSampleId ?? null,
-      weight: sample.weight,
-      volume: sample.volume,
-      df: sample.df,
+      weight: isSolid ? sample.weight : null,
+      volume: isSolid ? sample.volume : null,
+      df: isSolid ? sample.df : null,
       analytes: analytesResult,
     });
   }

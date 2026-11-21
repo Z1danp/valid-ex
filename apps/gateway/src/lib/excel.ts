@@ -127,9 +127,9 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
     sanitizeExcelText(targetSample.sampleId),
     sanitizeExcelText(targetSample.labSampleId ?? '-'),
     targetSample.sampleType,
-    targetSample.weight,
-    targetSample.volume,
-    targetSample.df,
+    targetSample.weight ?? '-',
+    targetSample.volume ?? '-',
+    targetSample.df ?? '-',
     ...targetResultCells,
   ]);
 
@@ -222,11 +222,17 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
       const r = 16 + idx;
       const readingVal = sRow.readings[analyte] ?? 0;
       const evalRes = sRow.analyteResults[analyte]!;
+      const isSolutionOnlyQc =
+        sRow.sampleType === 'blank_method' ||
+        sRow.sampleType === 'ccv' ||
+        sRow.weight === null ||
+        sRow.volume === null ||
+        sRow.df === null;
 
       sheet.getCell(`A${r}`).value = sanitizeExcelText(sRow.sampleId);
-      sheet.getCell(`B${r}`).value = sRow.weight;
-      sheet.getCell(`C${r}`).value = sRow.volume;
-      sheet.getCell(`D${r}`).value = sRow.df;
+      sheet.getCell(`B${r}`).value = isSolutionOnlyQc ? '-' : sRow.weight;
+      sheet.getCell(`C${r}`).value = isSolutionOnlyQc ? '-' : sRow.volume;
+      sheet.getCell(`D${r}`).value = isSolutionOnlyQc ? '-' : sRow.df;
       sheet.getCell(`E${r}`).value = readingVal;
 
       // F: C_raw
@@ -239,23 +245,39 @@ export async function generateSampleAuditWorkbook(input: SampleExportInput): Pro
         result: evalRes.cNet,
       };
 
-      // H: LOQ Method = (LOQ_inst * V * dF * unitFactor) / W
-      sheet.getCell(`H${r}`).value = {
-        formula: `($F$11*C${r}*D${r}*$F$12)/B${r}`,
-        result: evalRes.loqMethod,
-      };
+      if (isSolutionOnlyQc) {
+        // Blanko metode dan CCV tidak melalui konversi padatan.
+        sheet.getCell(`H${r}`).value = '-';
+        sheet.getCell(`I${r}`).value = '-';
+        sheet.getCell(`J${r}`).value =
+          sRow.sampleType === 'blank_method'
+            ? {
+                formula: `IF(OR(G${r}<=0,G${r}<$F$10),"ND","ND")`,
+                result: evalRes.reportedValue,
+              }
+            : {
+                formula: `ROUND(F${r},3)&" ${calibration.units.solutionConcUnit}"`,
+                result: evalRes.reportedValue,
+              };
+      } else {
+        // H: LOQ Method = (LOQ_inst * V * dF * unitFactor) / W
+        sheet.getCell(`H${r}`).value = {
+          formula: `($F$11*C${r}*D${r}*$F$12)/B${r}`,
+          result: evalRes.loqMethod ?? 0,
+        };
 
-      // I: Conc Solid
-      sheet.getCell(`I${r}`).value = {
-        formula: `IF(G${r}>=$F$11,(G${r}*C${r}*D${r}*$F$12)/B${r},"")`,
-        result: evalRes.concSolid ?? '',
-      };
+        // I: Conc Solid
+        sheet.getCell(`I${r}`).value = {
+          formula: `IF(G${r}>=$F$11,(G${r}*C${r}*D${r}*$F$12)/B${r},"")`,
+          result: evalRes.concSolid ?? '',
+        };
 
-      // J: Reported Result (3-Zone Gating Invariant D3)
-      sheet.getCell(`J${r}`).value = {
-        formula: `IF(OR(G${r}<=0,G${r}<$F$10),"ND",IF(G${r}<$F$11,"< "&ROUND(H${r},4)&" ${calibration.units.solidResultUnit}",ROUND(I${r},3)&" ${calibration.units.solidResultUnit}"))`,
-        result: evalRes.reportedValue,
-      };
+        // J: Reported Result (3-Zone Gating Invariant D3)
+        sheet.getCell(`J${r}`).value = {
+          formula: `IF(OR(G${r}<=0,G${r}<$F$10),"ND",IF(G${r}<$F$11,"< "&ROUND(H${r},4)&" ${calibration.units.solidResultUnit}",ROUND(I${r},3)&" ${calibration.units.solidResultUnit}"))`,
+          result: evalRes.reportedValue,
+        };
+      }
     });
   }
 

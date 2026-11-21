@@ -140,9 +140,9 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
           {
             sampleId: 'Blank Mars',
             sampleType: 'blank_method',
-            weight: 0.5,
-            volume: 50,
-            df: 1,
+            weight: null,
+            volume: null,
+            df: null,
             readings: { Pb: 20, Cd: 10 },
           },
           {
@@ -161,6 +161,15 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
             volume: 50,
             df: 1,
             readings: { Pb: 9020, Cd: 3010 },
+          },
+          {
+            sampleId: 'CCV-Check',
+            sampleType: 'ccv',
+            expectedConc: { Pb: 5.0, Cd: 2.5 },
+            weight: null,
+            volume: null,
+            df: null,
+            readings: { Pb: 5010, Cd: 2505 },
           },
         ],
       }),
@@ -206,10 +215,51 @@ describe('Stage 4D: Server-Side Excel Generator & Anti-CWE-1236', () => {
 
     // 4. Verify ADR-0008 Sample Isolation: row 16 is Blank Mars, row 17 is '=S-101-Target, row 18 is empty (S-102-OtherSample NOT included)
     expect(pbSheet.getCell('A16').value).toBe('Blank Mars');
+    expect(pbSheet.getCell('B16').value).toBe('-');
+    expect(pbSheet.getCell('C16').value).toBe('-');
+    expect(pbSheet.getCell('D16').value).toBe('-');
+    expect((pbSheet.getCell('F16').value as ExcelJS.CellFormulaValue).formula).toBe(
+      '(E16-$F$6)/$F$5',
+    );
+    expect((pbSheet.getCell('G16').value as ExcelJS.CellFormulaValue).formula).toBe('F16-$F$16');
+    expect(pbSheet.getCell('H16').value).toBe('-');
+    expect(pbSheet.getCell('I16').value).toBe('-');
+    expect((pbSheet.getCell('J16').value as ExcelJS.CellFormulaValue).result).toBe('ND');
+
     expect(pbSheet.getCell('A17').value).toBe("'=S-101-Target");
     expect(pbSheet.getCell('A18').value).toBeNull();
 
     const cNetCell = pbSheet.getCell('G17').value as ExcelJS.CellFormulaValue;
     expect(cNetCell.formula).toBe('F17-$F$16');
+
+    // 5. Verify CCV export formats weight/vol/df/LOQ/ConcSolid as '-' and reports measured solution concentration C_raw
+    const ccvRow = batch.evaluatedSamples.find(
+      (s: { sampleId: string }) => s.sampleId === 'CCV-Check',
+    );
+    const ccvExportRes = await app.request(
+      `/api/v1/calibrations/${batch.id}/samples/${ccvRow.id}/export`,
+      { headers: { Cookie: authCookie } },
+    );
+    expect(ccvExportRes.status).toBe(200);
+    const ccvWorkbook = new ExcelJS.Workbook();
+    await ccvWorkbook.xlsx.load(await ccvExportRes.arrayBuffer());
+
+    const ccvSummary = ccvWorkbook.getWorksheet('Summary & QC')!;
+    expect(ccvSummary.getCell('A10').value).toBe('CCV-Check');
+    expect(ccvSummary.getCell('D10').value).toBe('-');
+    expect(ccvSummary.getCell('E10').value).toBe('-');
+    expect(ccvSummary.getCell('F10').value).toBe('-');
+
+    const ccvPbSheet = ccvWorkbook.getWorksheet('Curve_Pb')!;
+    expect(ccvPbSheet.getCell('A17').value).toBe('CCV-Check');
+    expect(ccvPbSheet.getCell('B17').value).toBe('-');
+    expect(ccvPbSheet.getCell('C17').value).toBe('-');
+    expect(ccvPbSheet.getCell('D17').value).toBe('-');
+    expect(ccvPbSheet.getCell('H17').value).toBe('-');
+    expect(ccvPbSheet.getCell('I17').value).toBe('-');
+    expect((ccvPbSheet.getCell('J17').value as ExcelJS.CellFormulaValue).formula).toBe(
+      'ROUND(F17,3)&" ppb"',
+    );
+    expect((ccvPbSheet.getCell('J17').value as ExcelJS.CellFormulaValue).result).toBe('5.000 ppb');
   });
 });
