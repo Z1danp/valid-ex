@@ -25,18 +25,20 @@ type Instrument = components['schemas']['InstrumentType'];
 const INITIAL_ANALYTES: string[] = ['Cd'];
 
 const DEFAULT_LEVELS = [
-  { name: 'Blank', nominal: 0 },
-  { name: 'Std 10', nominal: 10 },
-  { name: 'Std 50', nominal: 50 },
-  { name: 'Std 100', nominal: 100 },
-  { name: 'Std 300', nominal: 300 },
-  { name: 'Std 500', nominal: 500 },
+  { name: 'Blank', nominal: 0, signal: 0 },
+  { name: 'Std 10', nominal: 10, signal: 10 },
+  { name: 'Std 50', nominal: 50, signal: 50 },
+  { name: 'Std 100', nominal: 100, signal: 100 },
+  { name: 'Std 300', nominal: 300, signal: 300 },
+  { name: 'Std 500', nominal: 500, signal: 500 },
 ];
 
 const INITIAL_STANDARDS: StandardRowItem[] = DEFAULT_LEVELS.map((lvl) => ({
   standardName: lvl.name,
   nominalConc: lvl.nominal,
-  readings: {},
+  readings: {
+    Cd: {nominalConc: lvl.nominal, signal: lvl.signal}
+  },
 }));
 
 const INITIAL_ROUTINE_SAMPLES: SampleRowState[] = [
