@@ -16,6 +16,8 @@ Dokumen ini memuat keputusan arsitektur penting (_One-Way Door Decisions_) yang 
 | [ADR-0006](file:///home/zidan/Projects/learning-hub/project-docs/valid-ex/adr/0006-matrix-payload-and-metrological-units.md)         | Matrix-Tabular Payload with Explicit Units & QC Relations       | **Accepted** | 2026-09-27 | DTO Ergonomics, Unit Dimensional Analysis, Anti-Regex   |
 | [ADR-0007](file:///home/zidan/Projects/learning-hub/project-docs/valid-ex/adr/0007-governed-qc-criteria-profiles.md)                 | Governed Versioned QC Criteria Profiles with Banded Thresholds  | **Accepted** | 2026-09-27 | QC Governance, Audit Snapshot, Level-Dependent Criteria |
 | [ADR-0008](file:///home/zidan/Projects/learning-hub/project-docs/valid-ex/adr/0008-sample-row-export.md)                             | Sample-Row Persistence with Per-Sample Excel Export             | **Accepted** | 2026-10-15 | Schema, One Excel per Sample, Optional Lab Sample ID    |
+| [ADR-0009](./0009-httponly-cookie-jwt-auth.md)                                                                                       | Stateless JWT Authentication via HttpOnly Cookie (`CookieAuth`) | **Accepted** | 2026-10-27 | Auth, HttpOnly Cookie, JWT                              |
+| [ADR-0010](./0010-solution-only-qc-and-metrology-verification.md)                                                                    | Solution-Only QC Rows & Two-Tier Metrology Verification         | **Accepted** | 2026-11-21 | OpenAPI, Nullable QC Prep Params, NIST Norris, ICP-OES  |
 
 ---
 
