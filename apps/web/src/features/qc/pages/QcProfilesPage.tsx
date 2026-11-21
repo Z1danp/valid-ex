@@ -1,4 +1,4 @@
-import { ShieldCheck, Plus, BookOpen, Layers } from 'lucide-react';
+import { ShieldCheck, Plus, OpenBook, MultiplePages } from 'iconoir-react';
 
 export default function QcProfilesPage() {
   return (
@@ -39,7 +39,7 @@ export default function QcProfilesPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                <OpenBook className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
                 <span>
                   Sitasi: SOP Pengujian Spektrometri Emisi &amp; Massa Lab No. MET-04/Rev.3
                 </span>
@@ -87,7 +87,7 @@ export default function QcProfilesPage() {
         </div>
 
         <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/30 text-xs text-slate-600 flex items-start gap-2.5">
-          <Layers className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+          <MultiplePages className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" aria-hidden="true" />
           <p className="leading-relaxed">
             Profil ini di-snapshot ke setiap batch kalibrasi saat submit. Mengubah ambang toleransi
             di atas secara otomatis akan menerbitkan versi baru (Rev. 2) tanpa mengubah hasil audit

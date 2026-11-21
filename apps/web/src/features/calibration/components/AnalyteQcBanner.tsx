@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { WarningTriangle, CheckCircle } from 'iconoir-react';
 
 export interface AnalyteQcBannerProps {
   analyteName: string;
@@ -11,7 +11,7 @@ export default function AnalyteQcBanner({ analyteName, analyteSymbol }: AnalyteQ
       <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-xs text-amber-900 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <WarningTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
             <span>
               Penyimpangan Kontrol Mutu pada Analit {analyteName} ({analyteSymbol})
             </span>
@@ -41,7 +41,7 @@ export default function AnalyteQcBanner({ analyteName, analyteSymbol }: AnalyteQ
   return (
     <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 flex items-center justify-between">
       <div className="flex items-center gap-2 font-medium">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
         <span>
           Semua kriteria kontrol mutu untuk {analyteName} ({analyteSymbol}) memenuhi syarat SOP: CCV
           (100%), Spike (100%), RPD (1.0%).

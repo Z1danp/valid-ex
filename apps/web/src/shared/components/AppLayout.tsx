@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { FlaskConical, ClipboardList, LogOut, User, ChevronDown } from 'lucide-react';
+import { Flask, TaskList, LogOut, NavArrowDown } from 'iconoir-react';
 
 export default function AppLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function AppLayout() {
               className="flex items-center gap-2 font-semibold text-slate-900 tracking-tight"
             >
               <div className="w-8 h-8 rounded-md bg-slate-900 text-white flex items-center justify-center">
-                <FlaskConical className="w-4 h-4 text-emerald-400" />
+                <Flask className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               </div>
               <div className="leading-none">
                 <div className="text-sm font-bold flex items-center gap-1.5">
@@ -74,7 +74,7 @@ export default function AppLayout() {
                 <div className="font-medium text-slate-900 text-xs">Zidan Analis</div>
                 <div className="text-[10px] text-slate-500 font-mono">ICP-MS Specialist</div>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <NavArrowDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
             </button>
 
             {userMenuOpen && (
@@ -94,7 +94,7 @@ export default function AppLayout() {
                     onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-slate-50 text-slate-700"
                   >
-                    <ClipboardList className="w-3.5 h-3.5 text-slate-500" />
+                    <TaskList className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
                     Katalog SOP QC Lab
                   </NavLink>
                   <button

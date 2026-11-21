@@ -9,7 +9,7 @@ import {
   type EditableGridCell,
   type GridSelection,
 } from '@glideapps/glide-data-grid';
-import { Plus, Trash2, Grid, ClipboardCopy, ShieldCheck } from 'lucide-react';
+import { Plus, Trash, ViewGrid, PasteClipboard, ShieldCheck } from 'iconoir-react';
 import {
   MAX_BATCH_SAMPLE_ROWS,
   sanitizeSampleRow,
@@ -450,7 +450,7 @@ export function SampleDataGrid({
                 : 'border-slate-500 bg-white hover:bg-slate-50 text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed'
             }`}
           >
-            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <Trash className="w-3.5 h-3.5" aria-hidden="true" />
             {selectedRowCount > 0 ? `Hapus (${selectedRowCount}) Baris` : 'Hapus Baris'}
           </button>
           <label className="inline-flex items-center gap-2 min-h-9 px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-xs text-slate-700 cursor-pointer select-none">
@@ -466,7 +466,7 @@ export function SampleDataGrid({
 
         <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-700">
           <span className="flex items-center gap-1">
-            <Grid className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+            <ViewGrid className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
             {activeCellDesc}
           </span>
           <span className="text-slate-400" aria-hidden="true">
@@ -508,7 +508,7 @@ export function SampleDataGrid({
       </div>
 
       <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300">
-        <ClipboardCopy className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" aria-hidden="true" />
+        <PasteClipboard className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-1 leading-relaxed">
           <div>
             <strong>Format Kolom Excel (Tabel Sampel):</strong>{' '}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Plus, Search, Eye, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Eye, Trash, WarningTriangle, CheckCircle } from 'iconoir-react';
 
 interface BatchSummary {
   id: string;
@@ -129,12 +129,12 @@ export default function CalibrationListPage() {
                   <td className="p-3 text-center">
                     {batch.qcStatus === 'PASSED' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3" />
+                        <CheckCircle className="w-3 h-3" aria-hidden="true" />
                         PASSED
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-50 text-amber-800 border border-amber-300">
-                        <AlertTriangle className="w-3 h-3" />
+                        <WarningTriangle className="w-3 h-3" aria-hidden="true" />
                         INVALID_QC
                       </span>
                     )}
@@ -154,7 +154,7 @@ export default function CalibrationListPage() {
                         className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
                         title="Hapus Batch"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   </td>

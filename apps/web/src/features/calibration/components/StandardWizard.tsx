@@ -13,12 +13,12 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
+  CheckCircle,
+  WarningTriangle,
   Plus,
-  X,
+  Xmark,
   Activity,
-} from 'lucide-react';
+} from 'iconoir-react';
 import { StandardDataGrid, type StandardRowItem } from './StandardDataGrid';
 import type { components } from '@valid-ex/contracts';
 
@@ -175,7 +175,7 @@ export default function StandardWizard({
                   onClick={() => setShowQuickAdd(false)}
                   className="ml-1 text-slate-400 hover:text-red-500"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Xmark className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </form>
             ) : (
@@ -193,7 +193,7 @@ export default function StandardWizard({
 
         {pasteNotice && (
           <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 shadow-2xs">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" aria-hidden="true" />
             <span>{pasteNotice}</span>
           </div>
         )}
@@ -257,7 +257,7 @@ export default function StandardWizard({
 
         {selectedAnalyte && !isInvariantD1Pass && (
           <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <WarningTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <div className="font-semibold">
                 Peringatan Invariant D1 (ISO 17025) untuk {selectedAnalyte}
@@ -288,9 +288,9 @@ export default function StandardWizard({
                   }`}
                 >
                   {activeRegression.reg.r >= 0.995 ? (
-                    <CheckCircle2 className="w-3 h-3" />
+                    <CheckCircle className="w-3 h-3" aria-hidden="true" />
                   ) : (
-                    <AlertTriangle className="w-3 h-3" />
+                    <WarningTriangle className="w-3 h-3" aria-hidden="true" />
                   )}
                   r = {activeRegression.reg.r.toFixed(6)}
                 </span>
@@ -490,7 +490,7 @@ export default function StandardWizard({
           </button>
           {!canProceedToStep3 && (
             <span className="text-[11px] text-amber-600 font-mono flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <WarningTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
               Lengkapi minimal 3 titik deret standar untuk semua analit untuk membuka Step 3
             </span>
           )}

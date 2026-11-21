@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FlaskConical, ArrowRight } from 'lucide-react';
+import { Flask, ArrowRight } from 'iconoir-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('analis@lab.iso17025.id');
@@ -17,7 +17,7 @@ export default function LoginPage() {
       <div className="max-w-sm w-full bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-6">
         <div className="space-y-2 text-center">
           <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center mx-auto shadow-sm">
-            <FlaskConical className="w-5 h-5 text-emerald-400" />
+            <Flask className="w-5 h-5 text-emerald-400" aria-hidden="true" />
           </div>
           <h1 className="text-lg font-bold text-slate-900 tracking-tight">Valid-Ex</h1>
           <p className="text-xs text-slate-500">

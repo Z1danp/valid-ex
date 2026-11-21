@@ -8,7 +8,7 @@ import {
   type CustomRenderer,
   type ProvideEditorComponent,
 } from '@glideapps/glide-data-grid';
-import { Check } from 'lucide-react';
+import { Check } from 'iconoir-react';
 
 export type DropdownTone = 'neutral' | 'slate' | 'emerald' | 'amber' | 'blue' | 'purple';
 

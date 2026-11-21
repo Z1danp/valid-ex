@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react';
+import { Download } from 'iconoir-react';
 import type { components } from '@valid-ex/contracts';
 
 type SampleType = components['schemas']['SampleType'];
@@ -122,7 +122,7 @@ export default function SampleEvaluationTable({
                     onClick={() => onDownload(row.sampleId)}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-sans font-medium text-slate-700 transition-colors shadow-xs"
                   >
-                    <Download className="w-3 h-3 text-slate-500" />
+                    <Download className="w-3 h-3 text-slate-500" aria-hidden="true" />
                     {row.sampleId}.xlsx
                   </button>
                 </td>

@@ -10,7 +10,7 @@ import {
   type GridSelection,
   type Theme,
 } from '@glideapps/glide-data-grid';
-import { Plus, Trash2, Grid, ClipboardCopy } from 'lucide-react';
+import { Plus, Trash, ViewGrid, PasteClipboard } from 'iconoir-react';
 
 export interface StandardReading {
   nominalConc: number;
@@ -381,14 +381,14 @@ export function StandardDataGrid({
                 : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40'
             }`}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash className="w-3.5 h-3.5" aria-hidden="true" />
             {selectedRowCount > 0 ? `Hapus (${selectedRowCount}) Baris` : 'Hapus Baris'}
           </button>
         </div>
 
         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
           <span className="flex items-center gap-1">
-            <Grid className="w-3 h-3 text-slate-400" />
+            <ViewGrid className="w-3 h-3 text-slate-400" aria-hidden="true" />
             {activeCellDesc}
           </span>
           <span className="text-slate-300">|</span>
@@ -427,7 +427,7 @@ export function StandardDataGrid({
       </div>
 
       <div className="flex items-start gap-2 text-[11px] font-mono text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-        <ClipboardCopy className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+        <PasteClipboard className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-0.5 leading-relaxed">
           <div>
             <strong>Format Kolom Excel:</strong>{' '}

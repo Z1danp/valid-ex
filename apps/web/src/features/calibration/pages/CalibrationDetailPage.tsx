@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { AlertTriangle, Download, ArrowLeft, Filter } from 'lucide-react';
+import { WarningTriangle, Download, ArrowLeft, Filter } from 'iconoir-react';
 import AnalyteQcBanner from '../components/AnalyteQcBanner';
 import CalibrationCurveSection, {
   type AnalyteCurveData,
@@ -251,7 +251,7 @@ export default function CalibrationDetailPage() {
               Pengujian ICP-MS Logam Berat Beras Putih
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-mono font-semibold bg-amber-50 text-amber-800 border border-amber-300">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+              <WarningTriangle className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
               INVALID_QC (OOS DETECTED)
             </span>
           </div>

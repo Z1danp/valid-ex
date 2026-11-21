@@ -1,4 +1,4 @@
-import { AlertCircle, Copy } from 'lucide-react';
+import { WarningCircle, Copy } from 'iconoir-react';
 import type { SampleRowState } from '../utils/sampleValidation';
 import type { SolutionConcUnit } from './sampleGridShared';
 
@@ -133,7 +133,7 @@ function QcTargetSubTable({
                         row.parent
                       ) : (
                         <span className="inline-flex items-center gap-1 text-amber-800 font-medium">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                          <WarningCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           Belum dipilih
                         </span>
                       )}

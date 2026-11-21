@@ -1,4 +1,4 @@
-import { Plus, X, Edit2, Info, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Plus, Xmark, EditPencil, InfoCircle, WarningTriangle, ArrowRight } from 'iconoir-react';
 import { useState } from 'react';
 import type { components } from '@valid-ex/contracts';
 
@@ -219,7 +219,7 @@ export default function MetadataWizard({
                             className="text-slate-400 hover:text-blue-600 transition-colors"
                             title="Ubah nama simbol"
                           >
-                            <Edit2 className="w-3 h-3" />
+                            <EditPencil className="w-3 h-3" aria-hidden="true" />
                           </button>
                           <button
                             type="button"
@@ -227,7 +227,7 @@ export default function MetadataWizard({
                             className="text-slate-400 hover:text-red-600 transition-colors"
                             title={`Hapus ${symbol}`}
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <Xmark className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </>
                       )}
@@ -240,7 +240,7 @@ export default function MetadataWizard({
 
           <div className="pt-2 border-t border-slate-100">
             <div className="text-[11px] text-slate-500 flex items-start gap-1.5 leading-relaxed font-sans">
-              <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+              <InfoCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
                 Sebelum lanjut ke Step 2, Anda harus memasukkan minimal 1 elemen analit. Kolom
                 spreadsheet deret standar dan sampel uji akan langsung disesuaikan dengan analit
@@ -254,7 +254,7 @@ export default function MetadataWizard({
       <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-3">
         {!canProceedToStep2 && (
           <span className="text-[11px] text-amber-600 font-mono flex items-center gap-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <WarningTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
             Tambahkan minimal 1 elemen analit untuk mengaktifkan Step 2
           </span>
         )}

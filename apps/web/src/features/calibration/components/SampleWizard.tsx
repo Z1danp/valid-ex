@@ -1,12 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle,
-  AlertTriangle,
+  Atom,
+  WarningCircle,
+  WarningTriangle,
   ArrowLeft,
-  CheckCircle2,
-  FileSpreadsheet,
-  Layers,
-} from 'lucide-react';
+  CheckCircle,
+  Table2Columns,
+} from 'iconoir-react';
 import { SampleDataGrid } from './SampleDataGrid';
 import { QcDataGrid } from './QcDataGrid';
 import { QcTargetParametersPanel } from './QcTargetParametersPanel';
@@ -79,7 +79,7 @@ export default function SampleWizard({
           aria-live="polite"
           className="p-3 rounded-lg bg-emerald-50 border border-emerald-700 text-emerald-800 text-xs flex items-center gap-2"
         >
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-700" aria-hidden="true" />
+          <CheckCircle className="w-4 h-4 shrink-0 text-emerald-700" aria-hidden="true" />
           <span>{pasteNotice}</span>
         </div>
       )}
@@ -95,7 +95,7 @@ export default function SampleWizard({
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono text-slate-800 self-start sm:self-auto">
-            <Layers className="w-3.5 h-3.5 text-slate-700" aria-hidden="true" />
+            <Atom className="w-3.5 h-3.5 text-slate-700" aria-hidden="true" />
             {analytes.join(', ')} ({analytes.length} analit)
           </span>
         </div>
@@ -169,7 +169,7 @@ export default function SampleWizard({
       >
         {validationIssues.length === 0 ? (
           <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <CheckCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>
               Validasi struktur sampel dan QC lengkap ({totalBatchRows} baris siap dikirim ke
               gateway).
@@ -179,9 +179,9 @@ export default function SampleWizard({
           <div className="space-y-2">
             <div className="flex items-center gap-2 font-semibold">
               {submitAttempted ? (
-                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <WarningCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               ) : (
-                <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <WarningTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
               )}
               <span>{validationIssues.length} item perlu dilengkapi sebelum simpan batch:</span>
             </div>
@@ -213,7 +213,7 @@ export default function SampleWizard({
           onClick={handleSubmitClick}
           className="inline-flex items-center justify-center gap-2 min-h-11 px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
+          <Table2Columns className="w-4 h-4" aria-hidden="true" />
           Validasi &amp; Simpan Batch (Submit ACID)
         </button>
       </div>

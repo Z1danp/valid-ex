@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, FlaskConical } from 'lucide-react';
+import { WarningCircle, Eye, EyeClosed, Flask } from 'iconoir-react';
 import type { components } from '@valid-ex/contracts';
 
 type RegisterFormValues = components['schemas']['RegisterRequest'];
@@ -176,7 +176,7 @@ export default function RegisterPage() {
             aria-hidden="true"
             className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center mx-auto shadow-xs"
           >
-            <FlaskConical className="w-5 h-5 text-emerald-400" />
+            <Flask className="w-5 h-5 text-emerald-400" aria-hidden="true" />
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Daftar Akun Valid-Ex</h1>
           <p className="text-sm text-slate-600">
@@ -221,7 +221,7 @@ export default function RegisterPage() {
                 id="register-name-error"
                 className="flex items-start gap-1.5 text-xs font-medium text-red-700 pt-0.5"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <WarningCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <span>{errors.name}</span>
               </p>
             )}
@@ -267,7 +267,7 @@ export default function RegisterPage() {
                 id="register-email-error"
                 className="flex items-start gap-1.5 text-xs font-medium text-red-700 pt-0.5"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <WarningCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <span>{errors.email}</span>
               </p>
             )}
@@ -316,7 +316,7 @@ export default function RegisterPage() {
                 className="absolute right-0.5 min-w-11 min-h-11 flex items-center justify-center rounded-md text-slate-700 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
               >
                 {showPassword ? (
-                  <EyeOff className="w-4 h-4" aria-hidden="true" />
+                  <EyeClosed className="w-4 h-4" aria-hidden="true" />
                 ) : (
                   <Eye className="w-4 h-4" aria-hidden="true" />
                 )}
@@ -330,7 +330,7 @@ export default function RegisterPage() {
                 id="register-password-error"
                 className="flex items-start gap-1.5 text-xs font-medium text-red-700 pt-0.5"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <WarningCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <span>{errors.password}</span>
               </p>
             )}

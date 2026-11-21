@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock } from 'iconoir-react';
 import { type StandardRowItem } from '../components/StandardDataGrid';
 import {
   removeAnalyteKeyInRows,
