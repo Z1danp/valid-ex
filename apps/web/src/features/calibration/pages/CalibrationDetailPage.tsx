@@ -33,7 +33,7 @@ const ANALYTE_CURVES: Record<AnalyteKey, AnalyteCurveData> = {
     ],
   },
   Pb: {
-    name: 'Timbal',
+    name: 'Lead',
     symbol: 'Pb',
     unit: 'ppb',
     slope: 10.0,
@@ -65,7 +65,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 6.0,
       cRaw: 0.5,
       cNet: 0.0,
-      zone: 'Zona 1 (ND)',
+      zone: 'Zone 1 (ND)',
       reportedValue: 'ND',
     },
     {
@@ -77,7 +77,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 27.0,
       cRaw: 11.0,
       cNet: 10.5,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '2.625 mg/kg',
     },
     {
@@ -89,7 +89,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 11.0,
       cRaw: 3.0,
       cNet: 2.5,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '0.625 mg/kg',
     },
     {
@@ -101,7 +101,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 245.0,
       cRaw: 120.0,
       cNet: 119.5,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '120.000 ppb',
       qcResult: 'Rec 120.0% (OOS)',
       isQcViolation: true,
@@ -116,7 +116,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 55.0,
       cRaw: 25.0,
       cNet: 24.5,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '24.5 ppb',
       qcResult: 'Rec 140.0% (OOS)',
       isQcViolation: true,
@@ -131,7 +131,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 15.0,
       cRaw: 5.0,
       cNet: 4.5,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '1.125 mg/kg',
       qcResult: 'RPD 80.0% (OOS)',
       isQcViolation: true,
@@ -147,7 +147,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 120.0,
       cRaw: 2.0,
       cNet: 0.0,
-      zone: 'Zona 1 (ND)',
+      zone: 'Zone 1 (ND)',
       reportedValue: 'ND',
     },
     {
@@ -159,7 +159,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 220.0,
       cRaw: 12.0,
       cNet: 10.0,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '2.500 mg/kg',
     },
     {
@@ -171,7 +171,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 110.0,
       cRaw: 1.0,
       cNet: -1.0,
-      zone: 'Zona 1 (ND)',
+      zone: 'Zone 1 (ND)',
       reportedValue: 'ND',
     },
     {
@@ -183,7 +183,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 600.0,
       cRaw: 50.0,
       cNet: 48.0,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '50.000 ppb',
       qcResult: 'Rec 100.0% (PASS)',
       isQcViolation: false,
@@ -198,7 +198,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 270.0,
       cRaw: 17.0,
       cNet: 15.0,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '15.0 ppb',
       qcResult: 'Rec 100.0% (PASS)',
       isQcViolation: false,
@@ -213,7 +213,7 @@ const SAMPLE_RESULTS: Record<AnalyteKey, SampleAnalyteResult[]> = {
       signal: 221.0,
       cRaw: 12.1,
       cNet: 10.1,
-      zone: 'Zona 3 (Sah)',
+      zone: 'Zone 3 (Valid)',
       reportedValue: '2.525 mg/kg',
       qcResult: 'RPD 1.0% (PASS)',
       isQcViolation: false,
@@ -230,7 +230,7 @@ export default function CalibrationDetailPage() {
 
   const handleDownload = (sampleId: string) => {
     setDownloadToast(
-      `Mengunduh lembar kerja ${sampleId}.xlsx (${selectedAnalyte}) dengan formula native Excel...`,
+      `Downloading worksheet ${sampleId}.xlsx (${selectedAnalyte}) with native Excel formulas...`,
     );
     setTimeout(() => setDownloadToast(null), 4000);
   };
@@ -241,72 +241,80 @@ export default function CalibrationDetailPage() {
         <div>
           <NavLink
             to="/calibrations"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors mb-1 font-mono"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors mb-1 font-mono rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Kembali ke Daftar Batch
+            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+            Back to Batch List
           </NavLink>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Pengujian ICP-MS Logam Berat Beras Putih
+              ICP-MS Heavy Metals Analysis: White Rice
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-mono font-semibold bg-amber-50 text-amber-800 border border-amber-300">
-              <WarningTriangle className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
+              <WarningTriangle className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
               INVALID_QC (OOS DETECTED)
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1 font-mono">
-            Instrumen: <strong>ICP-MS</strong> &bull; SOP: <strong>SOP-LAB-QC-01 Rev.1</strong>{' '}
-            &bull; Tanggal Uji: 11 Nov 2026
+          <p className="text-xs text-slate-600 mt-1 font-mono">
+            Instrument: <strong>ICP-MS</strong> &bull; SOP: <strong>SOP-LAB-QC-01 Rev.1</strong>{' '}
+            &bull; Run Date: 11 Nov 2026
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <NavLink
             to="/calibrations/new"
-            className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors shadow-xs"
+            className="inline-flex items-center min-h-10 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            + Batch Baru
+            + New Batch
           </NavLink>
         </div>
       </div>
 
       {downloadToast && (
-        <div className="p-3.5 rounded-lg bg-slate-900 text-white text-xs flex items-center justify-between shadow-lg animate-in fade-in-50">
+        <div
+          role="status"
+          aria-live="polite"
+          className="p-3.5 rounded-lg bg-slate-900 text-white text-xs flex items-center justify-between shadow-lg"
+        >
           <div className="flex items-center gap-2">
-            <Download className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Download className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
             <span className="font-mono">{downloadToast}</span>
           </div>
-          <span className="text-[10px] font-mono text-slate-400">ADR-0008 Export</span>
+          <span className="text-[10px] font-mono text-slate-300">ADR-0008 Export</span>
         </div>
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 text-xs">
-          <Filter className="w-4 h-4 text-slate-500" />
-          <span className="font-medium text-slate-700">Filter Tampilan per Analit:</span>
+          <Filter className="w-4 h-4 text-slate-600" aria-hidden="true" />
+          <span className="font-medium text-slate-700">Filter View by Analyte:</span>
         </div>
 
         <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 font-mono text-xs">
           <button
+            type="button"
+            aria-pressed={selectedAnalyte === 'Al'}
             onClick={() => setSelectedAnalyte('Al')}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
+            className={`px-4 py-1.5 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               selectedAnalyte === 'Al'
                 ? 'bg-slate-900 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-700 hover:text-slate-900'
             }`}
           >
             Aluminium (Al)
           </button>
           <button
+            type="button"
+            aria-pressed={selectedAnalyte === 'Pb'}
             onClick={() => setSelectedAnalyte('Pb')}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
+            className={`px-4 py-1.5 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               selectedAnalyte === 'Pb'
                 ? 'bg-slate-900 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-700 hover:text-slate-900'
             }`}
           >
-            Timbal (Pb)
+            Lead (Pb)
           </button>
         </div>
       </div>

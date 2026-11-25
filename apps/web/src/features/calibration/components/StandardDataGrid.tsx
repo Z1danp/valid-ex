@@ -11,7 +11,9 @@ import {
   type Theme,
 } from '@glideapps/glide-data-grid';
 import { Plus, Trash, ViewGrid, PasteClipboard } from 'iconoir-react';
+import type { components } from '@valid-ex/contracts';
 
+type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit']
 export interface StandardReading {
   nominalConc: number;
   signal: number;
@@ -29,6 +31,7 @@ interface StandardDataGridProps {
   onChange: (updated: StandardRowItem[]) => void;
   onNotice?: (message: string) => void;
   unit: string;
+  signalUnit: SignalUnit
 }
 
 const GRID_THEME: Partial<Theme> = {
@@ -66,6 +69,7 @@ export function StandardDataGrid({
   onChange,
   onNotice,
   unit,
+  signalUnit
 }: StandardDataGridProps) {
   const [colWidths, setColWidths] = useState<Record<string, number>>({
     label: 150,
@@ -80,7 +84,7 @@ export function StandardDataGrid({
     const cols: GridColumn[] = [
       {
         id: 'label',
-        title: `Label Standar (${unit})`,
+        title: `Standard Label (${unit})`,
         width: colWidths.label ?? 150,
       },
     ];
@@ -88,13 +92,13 @@ export function StandardDataGrid({
     analytes.forEach((analyte) => {
       cols.push({
         id: analyte,
-        title: `${analyte} (cps)`,
+        title: `${analyte} (${signalUnit})`,
         width: colWidths[analyte] ?? 130,
       });
     });
 
     return cols;
-  }, [analytes, colWidths]);
+  }, [analytes, colWidths, signalUnit, unit]);
 
   const handleColumnResize = useCallback((column: GridColumn, newSize: number) => {
     if (column.id) {
@@ -251,9 +255,9 @@ export function StandardDataGrid({
 
       if (onNotice) {
         const colTitle =
-          startCol === 0 ? 'Label' : (analytes[startCol - 1] ?? `Kolom ${startCol + 1}`);
+          startCol === 0 ? 'Label' : (analytes[startCol - 1] ?? `Column ${startCol + 1}`);
         onNotice(
-          `Berhasil menempelkan ${values.length} baris x ${values[0]?.length} kolom dari Excel ke sel (baris ${startRow + 1}, ${colTitle}).`,
+          `Pasted ${values.length} rows x ${values[0]?.length} columns from clipboard at row ${startRow + 1}, ${colTitle}.`,
         );
       }
 
@@ -280,10 +284,12 @@ export function StandardDataGrid({
 
   const handleDeleteSelected = useCallback(() => {
     const selectedRows = selection.rows.toArray();
+    const minPointsMsg = 'Calibration curve requires at least 3 data points (df >= 1).';
 
     if (selectedRows.length > 0) {
       if (standards.length - selectedRows.length < 3) {
-        alert('Deret kalibrasi membutuhkan minimal 3 titik data (df >= 1).');
+        if (onNotice) onNotice(minPointsMsg);
+        else alert(minPointsMsg);
         return;
       }
       const updated = standards.filter((_, i) => !selectedRows.includes(i));
@@ -298,20 +304,23 @@ export function StandardDataGrid({
     if (selection.current) {
       const targetRow = selection.current.cell[1];
       if (standards.length <= 3) {
-        alert('Deret kalibrasi membutuhkan minimal 3 titik data (df >= 1).');
+        if (onNotice) onNotice(minPointsMsg);
+        else alert(minPointsMsg);
         return;
       }
       const updated = standards.filter((_, i) => i !== targetRow);
       onChange(updated);
     }
-  }, [standards, selection, onChange]);
+  }, [standards, selection, onChange, onNotice]);
 
   const handleDeleteCallback = useCallback(
     (sel: GridSelection) => {
+      const minPointsMsg = 'Calibration curve requires at least 3 data points (df >= 1).';
       if (sel.rows.length > 0) {
         const selectedRows = sel.rows.toArray();
         if (standards.length - selectedRows.length < 3) {
-          alert('Deret kalibrasi membutuhkan minimal 3 titik data (df >= 1).');
+          if (onNotice) onNotice(minPointsMsg);
+          else alert(minPointsMsg);
           return false;
         }
         const updated = standards.filter((_, i) => !selectedRows.includes(i));
@@ -346,54 +355,61 @@ export function StandardDataGrid({
 
       return false;
     },
-    [standards, analytes, onChange],
+    [standards, analytes, onChange, onNotice],
   );
 
   const selectedRowCount = selection.rows.length;
   const activeCellDesc = useMemo(() => {
     if (selection.current) {
       const [col, row] = selection.current.cell;
-      const colTitle = col === 0 ? 'Label' : `${analytes[col - 1]} (cps)`;
-      return `Sel Aktif: Baris ${row + 1}, ${colTitle || `Kolom ${col + 1}`}`;
+      const colTitle =
+        col === 0
+          ? `Standard Label (${unit})`
+          : analytes[col - 1]
+            ? `${analytes[col - 1]} (${signalUnit})`
+            : `Column ${col + 1}`;
+      return `Active cell: Row ${row + 1}, ${colTitle}`;
     }
-    return 'Pilih sel atau blok rentang untuk copy/paste';
-  }, [selection, analytes]);
+    return 'Select a cell or range to copy/paste';
+  }, [selection, analytes, signalUnit, unit]);
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={handleAddRow}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-medium text-slate-700 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1 min-h-9 px-2.5 py-1 text-xs rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-medium text-slate-800 transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            <Plus className="w-3.5 h-3.5" />
-            Tambah Titik Standar
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            Add Row
           </button>
           <button
             type="button"
             onClick={handleDeleteSelected}
             disabled={standards.length <= 3}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg border transition-colors shadow-2xs ${
+            className={`inline-flex items-center gap-1 min-h-9 px-2.5 py-1 text-xs rounded-lg border transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               selectedRowCount > 0
-                ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 font-medium'
-                : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40'
+                ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 font-medium'
+                : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40'
             }`}
           >
             <Trash className="w-3.5 h-3.5" aria-hidden="true" />
-            {selectedRowCount > 0 ? `Hapus (${selectedRowCount}) Baris` : 'Hapus Baris'}
+            {selectedRowCount > 0
+              ? `Delete ${selectedRowCount} ${selectedRowCount === 1 ? 'Row' : 'Rows'}`
+              : 'Delete Row'}
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
+        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600">
           <span className="flex items-center gap-1">
-            <ViewGrid className="w-3 h-3 text-slate-400" aria-hidden="true" />
+            <ViewGrid className="w-3 h-3 text-slate-600" aria-hidden="true" />
             {activeCellDesc}
           </span>
-          <span className="text-slate-300">|</span>
-          <span className="text-slate-400">
-            {standards.length} baris &times; {columns.length} kolom
+          <span className="text-slate-400" aria-hidden="true">|</span>
+          <span className="text-slate-600">
+            {standards.length} rows &times; {columns.length} columns
           </span>
         </div>
       </div>
@@ -410,7 +426,7 @@ export function StandardDataGrid({
           onRowAppended={handleAddRow}
           trailingRowOptions={{
             tint: true,
-            hint: '+ Tambah titik standar...',
+            hint: 'Add row...',
             sticky: false,
           }}
           rowMarkers="number"
@@ -424,26 +440,6 @@ export function StandardDataGrid({
           cellActivationBehavior="second-click"
           keybindings={{ downFill: true, rightFill: true }}
         />
-      </div>
-
-      <div className="flex items-start gap-2 text-[11px] font-mono text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-        <PasteClipboard className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
-        <div className="space-y-0.5 leading-relaxed">
-          <div>
-            <strong>Format Kolom Excel:</strong>{' '}
-            <code className="text-slate-700 bg-white px-1 py-0.5 rounded border border-slate-200">
-              Label | {analytes.join(' | ')}
-            </code>
-            . Blok di Excel &rarr;{' '}
-            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+C</kbd>{' '}
-            &rarr; Klik sel target di tabel &rarr;{' '}
-            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-300">Ctrl+V</kbd>.
-          </div>
-          <div className="text-slate-400">
-            Klik ganda atau ketik langsung angka pada sel untuk mengedit. Konsentrasi nominal
-            otomatis diekstrak dari label (Blank &rarr; 0 ppb, Std 10 &rarr; 10 ppb, dst.).
-          </div>
-        </div>
       </div>
     </div>
   );

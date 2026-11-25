@@ -184,11 +184,11 @@ test('validateBatchSamples catches missing blank_method, duplicate IDs, bad pare
   const messages = issues.map((i) => i.message).join(' | ');
 
   assert.match(messages, /blank_method/);
-  assert.match(messages, /duplikat/);
+  assert.match(messages, /Duplicate/);
   assert.match(messages, /expectedConc/);
   assert.match(messages, /spikeAdded/);
   assert.match(messages, /Parent "MISSING"/);
-  assert.match(messages, /SP1: Bobot/);
+  assert.match(messages, /SP1: Weight/);
 
   const overLimitSamples = Array.from({ length: 248 }, (_, idx) =>
     makeRow({

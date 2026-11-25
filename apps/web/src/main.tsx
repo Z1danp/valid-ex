@@ -7,7 +7,7 @@ import './index.css';
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-  throw new Error('Gagal menemukan root element di index.html');
+  throw new Error('Root element not found in index.html');
 }
 
 // Ensure Glide Data Grid overlay editor portal is always present in DOM

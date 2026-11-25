@@ -15,10 +15,10 @@ function validateField(field: RegisterField, values: RegisterFormValues): string
   if (field === 'name') {
     const trimmed = value.trim();
     if (!trimmed) {
-      return 'Nama lengkap wajib diisi.';
+      return 'Full name is required.';
     }
     if (trimmed.length < 2) {
-      return 'Nama lengkap minimal 2 karakter.';
+      return 'Full name must be at least 2 characters.';
     }
     return undefined;
   }
@@ -26,19 +26,19 @@ function validateField(field: RegisterField, values: RegisterFormValues): string
   if (field === 'email') {
     const trimmed = value.trim();
     if (!trimmed) {
-      return 'Email wajib diisi.';
+      return 'Email is required.';
     }
     if (!EMAIL_PATTERN.test(trimmed)) {
-      return 'Masukkan alamat email yang valid, misalnya analis@lab.id.';
+      return 'Enter a valid email address, such as analyst@lab.org.';
     }
     return undefined;
   }
 
   if (!value) {
-    return 'Password wajib diisi.';
+    return 'Password is required.';
   }
   if (value.length < 8) {
-    return 'Password minimal 8 karakter.';
+    return 'Password must be at least 8 characters.';
   }
   return undefined;
 }
@@ -88,7 +88,7 @@ export default function RegisterPage() {
   const announceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    document.title = 'Daftar Akun | Valid-Ex';
+    document.title = 'Create Account | Valid-Ex';
     return () => {
       if (redirectTimerRef.current !== null) {
         window.clearTimeout(redirectTimerRef.current);
@@ -154,10 +154,10 @@ export default function RegisterPage() {
       return;
     }
 
-    // TODO: Sambungkan ke POST /api/v1/auth/register setelah API gateway siap
+    // TODO: Connect to POST /api/v1/auth/register once the API gateway is ready
     setIsSubmitting(true);
     setStatusMessage(
-      `Data akun untuk ${values.name.trim()} valid (mode preview lokal). Membuka workspace...`,
+      `Account details for ${values.name.trim()} are valid (local preview mode). Opening workspace...`,
     );
     redirectTimerRef.current = window.setTimeout(() => {
       navigate('/calibrations');
@@ -178,22 +178,22 @@ export default function RegisterPage() {
           >
             <Flask className="w-5 h-5 text-emerald-400" aria-hidden="true" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Daftar Akun Valid-Ex</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Create a Valid-Ex Account</h1>
           <p className="text-sm text-slate-600">
-            Buat akun analis untuk mengelola kalibrasi dan kontrol mutu ISO/IEC 17025.
+            Create an analyst account to manage ISO/IEC 17025 calibrations and quality control.
           </p>
         </header>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="space-y-1">
             <label htmlFor="register-name" className="block text-sm font-medium text-slate-700">
-              Nama Lengkap{' '}
+              Full Name{' '}
               <span className="text-red-700" aria-hidden="true">
                 *
               </span>
             </label>
             <p id="register-name-hint" className="text-xs text-slate-600">
-              Minimal 2 karakter, tampil pada jejak audit laporan.
+              At least 2 characters; shown on report audit trails.
             </p>
             <input
               ref={nameRef}
@@ -204,7 +204,7 @@ export default function RegisterPage() {
               enterKeyHint="next"
               minLength={2}
               required
-              placeholder="Nama lengkap Anda"
+              placeholder="Your full name"
               value={values.name}
               onChange={(e) => handleChange('name', e.target.value)}
               onBlur={() => handleBlur('name')}
@@ -229,13 +229,13 @@ export default function RegisterPage() {
 
           <div className="space-y-1">
             <label htmlFor="register-email" className="block text-sm font-medium text-slate-700">
-              Email Analis{' '}
+              Analyst Email{' '}
               <span className="text-red-700" aria-hidden="true">
                 *
               </span>
             </label>
             <p id="register-email-hint" className="text-xs text-slate-600">
-              Format: nama@instansi.id.
+              Format: name@organization.org.
             </p>
             <input
               ref={emailRef}
@@ -248,7 +248,7 @@ export default function RegisterPage() {
               autoCapitalize="none"
               enterKeyHint="next"
               required
-              placeholder="email@instansi.id"
+              placeholder="email@organization.org"
               value={values.email}
               onChange={(e) => handleChange('email', e.target.value)}
               onBlur={() => handleBlur('email')}
@@ -281,7 +281,7 @@ export default function RegisterPage() {
               </span>
             </label>
             <p id="register-password-hint" className="text-xs text-slate-600">
-              Minimal 8 karakter. Boleh menempel password dari pengelola sandi.
+              At least 8 characters. Pasting from a password manager is supported.
             </p>
             <div className="relative flex items-center">
               <input
@@ -293,7 +293,7 @@ export default function RegisterPage() {
                 enterKeyHint="done"
                 minLength={8}
                 required
-                placeholder="Minimal 8 karakter"
+                placeholder="At least 8 characters"
                 value={values.password}
                 onChange={(e) => handleChange('password', e.target.value)}
                 onBlur={() => handleBlur('password')}
@@ -311,7 +311,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-pressed={showPassword}
-                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 aria-describedby="register-password-toggle-note"
                 className="absolute right-0.5 min-w-11 min-h-11 flex items-center justify-center rounded-md text-slate-700 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
               >
@@ -323,7 +323,7 @@ export default function RegisterPage() {
               </button>
             </div>
             <span id="register-password-toggle-note" className="sr-only">
-              Perhatian: tombol ini menampilkan karakter password di layar.
+              Note: this button reveals password characters on screen.
             </span>
             {passwordErrorVisible && (
               <p
@@ -351,22 +351,22 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             className="w-full min-h-11 py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            {isSubmitting ? 'Menyiapkan Workspace...' : 'Buat Akun Analis'}
+            {isSubmitting ? 'Preparing Workspace...' : 'Create Analyst Account'}
           </button>
         </form>
 
         <div className="pt-2 border-t border-slate-200 space-y-2 text-center">
           <p className="text-sm text-slate-600">
-            Sudah punya akun?{' '}
+            Already have an account?{' '}
             <Link
               to="/login"
               className="inline-flex items-center min-h-11 px-1 font-semibold text-slate-900 underline underline-offset-4 hover:text-slate-700 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
-              Masuk di sini
+              Sign in
             </Link>
           </p>
           <p className="text-xs text-slate-600 font-mono">
-            Mode Preview UI (Belum terhubung ke API autentikasi)
+            UI Preview Mode (Not connected to auth API)
           </p>
         </div>
       </div>

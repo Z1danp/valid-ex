@@ -25,6 +25,7 @@ import type { components } from '@valid-ex/contracts';
 // OpenAPI types
 type SolutionConcUnit = components['schemas']['MetrologyUnits']['solutionConcUnit'];
 type Analytes = components['schemas']['CalibrationBatchRequest']['analytes'];
+type MetrologyUnits = components['schemas']['MetrologyUnits']['signalUnit']
 
 export interface StandardWizardProps {
   analytes: Analytes;
@@ -38,6 +39,7 @@ export interface StandardWizardProps {
   onNotice: (msg: string) => void;
   canProceedToStep3: boolean;
   setStep: (step: 1 | 2 | 3) => void;
+  metrologyUnits: MetrologyUnits;
 }
 
 export default function StandardWizard({
@@ -52,6 +54,7 @@ export default function StandardWizard({
   onNotice,
   canProceedToStep3,
   setStep,
+  metrologyUnits
 }: StandardWizardProps) {
   const [quickAddAnalyteInput, setQuickAddAnalyteInput] = useState('');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -78,7 +81,7 @@ export default function StandardWizard({
     analytes.forEach((analyte) => {
       try {
         if (standards.length < 3) {
-          result[analyte] = { reg: null, lod: 0, loq: 0, error: 'Kurang dari 3 titik data.' };
+          result[analyte] = { reg: null, lod: 0, loq: 0, error: 'Fewer than 3 data points.' };
           return;
         }
         const points = standards.map((s) => ({
@@ -94,7 +97,7 @@ export default function StandardWizard({
           reg: null,
           lod: 0,
           loq: 0,
-          error: err instanceof Error ? err.message : 'Gagal regresi',
+          error: err instanceof Error ? err.message : 'Regression failed',
         };
       }
     });
@@ -106,7 +109,7 @@ export default function StandardWizard({
     reg: null,
     lod: 0,
     loq: 0,
-    error: 'Pilih analit',
+    error: 'Select an analyte',
   };
 
   const nonZeroLevels = selectedAnalyte
@@ -142,14 +145,10 @@ export default function StandardWizard({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 font-mono">
-              Spreadsheet DataGrid Deret Standar (Multi-Elemen)
+              Calibration Standards Datagrid
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Format Kolom:{' '}
-              <code className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
-                Label | {analytes.join(' | ')}
-              </code>
-              . Blok di Excel &rarr; Ctrl+C &rarr; Ctrl+V ke dalam tabel.
+             Column Format: Select in Excel &rarr; Ctrl+C &rarr; Ctrl+V into the grid.
             </p>
           </div>
 
@@ -159,21 +158,23 @@ export default function StandardWizard({
                 <input
                   type="text"
                   autoFocus
+                  aria-label="Analyte symbol"
                   value={quickAddAnalyteInput}
                   onChange={(e) => setQuickAddAnalyteInput(e.target.value)}
-                  placeholder="Simbol analit..."
-                  className="w-24 px-2 py-1 text-xs bg-white border border-slate-300 rounded font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  placeholder="Analyte symbol..."
+                  className="w-28 px-2 py-1 text-xs bg-white border border-slate-300 rounded font-mono text-slate-900 placeholder:text-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                 />
                 <button
                   type="submit"
-                  className="ml-1 text-slate-700 hover:text-slate-900 font-medium text-xs"
+                  className="ml-1.5 px-2 py-1 text-slate-800 hover:text-slate-900 font-medium text-xs rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                 >
-                  + Tambah
+                  + Add
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowQuickAdd(false)}
-                  className="ml-1 text-slate-400 hover:text-red-500"
+                  aria-label="Cancel adding analyte"
+                  className="ml-1 p-1 text-slate-600 hover:text-red-700 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                 >
                   <Xmark className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -182,18 +183,22 @@ export default function StandardWizard({
               <button
                 type="button"
                 onClick={() => setShowQuickAdd(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-medium text-slate-700 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1 min-h-9 px-2.5 py-1 text-xs rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-medium text-slate-800 transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah Analit
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                Add Analyte
               </button>
             )}
           </div>
         </div>
 
         {pasteNotice && (
-          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 shadow-2xs">
-            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" aria-hidden="true" />
+          <div
+            role="status"
+            aria-live="polite"
+            className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 shadow-2xs"
+          >
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-700" aria-hidden="true" />
             <span>{pasteNotice}</span>
           </div>
         )}
@@ -204,6 +209,7 @@ export default function StandardWizard({
           analytes={analytes}
           onChange={setStandards}
           onNotice={onNotice}
+          signalUnit={metrologyUnits}
         />
       </div>
 
@@ -213,16 +219,16 @@ export default function StandardWizard({
           <div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold uppercase">
-                <Activity className="w-3 h-3 text-emerald-600" />
+                <Activity className="w-3 h-3 text-emerald-700" aria-hidden="true" />
                 Live Engine @valid-ex/math
               </span>
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                Kurva Kalibrasi &amp; Diagnostik Metrologi
+                Calibration Curves &amp; Metrology Diagnostics
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pilih elemen analit di bawah untuk meninjau kurva kalibrasi regresi OLS, sensitivitas,
-              dan batas deteksi:
+            <p className="text-xs text-slate-600 mt-0.5">
+              Select an analyte below to inspect its OLS regression curve, sensitivity, and
+              detection limits:
             </p>
           </div>
 
@@ -234,20 +240,27 @@ export default function StandardWizard({
                 <button
                   key={a}
                   type="button"
+                  aria-pressed={selectedAnalyte === a}
                   onClick={() => setSelectedAnalyte(a)}
-                  className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
                     selectedAnalyte === a
                       ? 'bg-white text-slate-900 font-semibold shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
                   <span>{a}</span>
                   {reg && (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isPass ? 'bg-emerald-500' : 'bg-red-500'
-                      }`}
-                    />
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isPass ? 'bg-emerald-600' : 'bg-red-600'
+                        }`}
+                      />
+                      <span className="sr-only">
+                        {isPass ? '(linearity pass)' : '(linearity below 0.995)'}
+                      </span>
+                    </>
                   )}
                 </button>
               );
@@ -257,15 +270,15 @@ export default function StandardWizard({
 
         {selectedAnalyte && !isInvariantD1Pass && (
           <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
-            <WarningTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <WarningTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <div className="font-semibold">
-                Peringatan Invariant D1 (ISO 17025) untuk {selectedAnalyte}
+                Warning for {selectedAnalyte}
               </div>
               <div className="text-[11px] text-amber-800 mt-0.5">
-                Kurva linear wajib memiliki minimal 5 konsentrasi non-zero dan titik blanko (0{' '}
-                {unit}). Saat ini terdeteksi <strong>{nonZeroLevels} level non-zero</strong>{' '}
-                {hasBlank ? '(dengan blanko)' : '(tanpa blanko 0 {unit})'}.
+                Linear calibration requires at least 5 non-zero levels and a reagent blank (0{' '}
+                {unit}). Currently detected: <strong>{nonZeroLevels} non-zero levels</strong>{' '}
+                {hasBlank ? '(with blank)' : `(missing 0 ${unit} blank)`}.
               </div>
             </div>
           </div>
@@ -276,7 +289,7 @@ export default function StandardWizard({
           <div className="lg:col-span-7 bg-slate-50/50 rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-slate-700 font-mono">
-                Plot Kurva Kalibrasi:{' '}
+                Calibration Curve Plot:{' '}
                 <strong className="text-slate-900">{selectedAnalyte || '-'}</strong>
               </span>
               {activeRegression.reg && (
@@ -309,13 +322,13 @@ export default function StandardWizard({
                       dataKey="nominal"
                       type="number"
                       unit={unit}
-                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      tick={{ fontSize: 10, fill: '#475569' }}
                     />
                     <YAxis
                       dataKey="actualSignal"
                       type="number"
-                      unit=" cps"
-                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      unit={` ${metrologyUnits}`}
+                      tick={{ fontSize: 10, fill: '#475569' }}
                     />
                     <Tooltip
                       contentStyle={{
@@ -323,11 +336,11 @@ export default function StandardWizard({
                         borderRadius: '8px',
                         border: '1px solid #e2e8f0',
                       }}
-                      formatter={(value: any, name: any) => [
-                        `${Number(value).toFixed(2)} cps`,
-                        name === 'actualSignal' ? 'Signal Aktual' : 'Garis Regresi',
+                      formatter={(value: unknown, name: unknown) => [
+                        `${Number(value).toFixed(2)} ${metrologyUnits}`,
+                        name === 'actualSignal' ? 'Actual Signal' : 'Regression Line',
                       ]}
-                      labelFormatter={(label: any) => `Konsentrasi: ${label} ${unit}`}
+                      labelFormatter={(label: unknown) => `Concentration: ${label} ${unit}`}
                     />
                     <Scatter
                       name="actualSignal"
@@ -346,8 +359,8 @@ export default function StandardWizard({
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                  {activeRegression.error || 'Memuat kurva kalibrasi...'}
+                <div className="h-full flex items-center justify-center text-xs text-slate-600">
+                  {activeRegression.error || 'Loading calibration curve...'}
                 </div>
               )}
             </div>
@@ -358,31 +371,31 @@ export default function StandardWizard({
             {activeRegression.reg ? (
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
-                    Slope (m, sensitivitas)
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
+                    Slope (m, sensitivity)
                   </div>
                   <div className="text-sm font-bold text-slate-900 mt-0.5">
                     {activeRegression.reg.slope.toFixed(4)}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
-                    Intercept (c, sinyal 0)
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
+                    Intercept (c, 0 signal)
                   </div>
                   <div className="text-sm font-bold text-slate-900 mt-0.5">
                     {activeRegression.reg.intercept.toFixed(4)}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
-                    Korelasi (R&sup2;)
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
+                    Det. Coeff. (R&sup2;)
                   </div>
                   <div className="text-sm font-bold text-slate-900 mt-0.5">
                     {activeRegression.reg.rSquared.toFixed(6)}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
                     Residual (sy/x)
                   </div>
                   <div className="text-sm font-medium text-slate-800 mt-0.5">
@@ -390,7 +403,7 @@ export default function StandardWizard({
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
                     LOD Inst (3s/m, {unit})
                   </div>
                   <div className="text-sm font-semibold text-emerald-700 mt-0.5">
@@ -398,7 +411,7 @@ export default function StandardWizard({
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-2xs">
-                  <div className="text-[10px] text-slate-500 uppercase font-sans">
+                  <div className="text-[10px] text-slate-600 uppercase font-sans">
                     LOQ Inst (10s/m, {unit})
                   </div>
                   <div className="text-sm font-semibold text-emerald-700 mt-0.5">
@@ -407,25 +420,25 @@ export default function StandardWizard({
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-xs text-center">
-                {activeRegression.error || 'Data deret belum lengkap'}
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs text-center">
+                {activeRegression.error || 'Calibration standards incomplete'}
               </div>
             )}
 
             {/* Multi-Analyte Scorecard */}
             <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs">
               <div className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider font-mono mb-2">
-                Ringkasan Semua Analit ({analytes.length})
+                All Analytes Summary ({analytes.length})
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono text-left">
-                  <thead className="text-[10px] text-slate-500 border-b border-slate-200">
+                  <thead className="text-[10px] text-slate-600 border-b border-slate-200">
                     <tr>
-                      <th className="pb-1">Analit</th>
-                      <th className="pb-1 text-right">Slope</th>
-                      <th className="pb-1 text-right">r</th>
-                      <th className="pb-1 text-right">LOD</th>
-                      <th className="pb-1 text-center">Status</th>
+                      <th scope="col" className="pb-1">Analyte</th>
+                      <th scope="col" className="pb-1 text-right">Slope</th>
+                      <th scope="col" className="pb-1 text-right">r</th>
+                      <th scope="col" className="pb-1 text-right">LOD</th>
+                      <th scope="col" className="pb-1 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -436,8 +449,16 @@ export default function StandardWizard({
                       return (
                         <tr
                           key={a}
+                          tabIndex={0}
+                          aria-current={isSelected ? 'true' : undefined}
                           onClick={() => setSelectedAnalyte(a)}
-                          className={`cursor-pointer transition-colors ${
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedAnalyte(a);
+                            }
+                          }}
+                          className={`cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-900 ${
                             isSelected
                               ? 'bg-slate-100 font-semibold text-slate-900'
                               : 'hover:bg-slate-50 text-slate-700'
@@ -473,25 +494,25 @@ export default function StandardWizard({
         <button
           type="button"
           onClick={() => setStep(1)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
+          className="inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Kembali ke Metadata
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+          Back to Setup
         </button>
         <div className="flex flex-col items-end gap-1">
           <button
             type="button"
             onClick={() => canProceedToStep3 && setStep(3)}
             disabled={!canProceedToStep3}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900 text-white text-xs font-medium transition-colors shadow-2xs"
+            className="inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900 text-white text-xs font-medium transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            Lanjut ke Step 3: Sampel Uji
-            <ArrowRight className="w-3.5 h-3.5" />
+            Samples &amp; QC
+            <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           {!canProceedToStep3 && (
-            <span className="text-[11px] text-amber-600 font-mono flex items-center gap-1">
-              <WarningTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-              Lengkapi minimal 3 titik deret standar untuk semua analit untuk membuka Step 3
+            <span className="text-[11px] text-amber-800 font-mono flex items-center gap-1">
+              <WarningTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
+              Fill at least 3 standard points for every analyte to unlock Step 3
             </span>
           )}
         </div>

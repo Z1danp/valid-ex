@@ -26,7 +26,6 @@ interface QcTargetSubTableProps {
 function QcTargetSubTable({
   title,
   caption,
-  description,
   fieldKey,
   targetRows,
   allQcRows,
@@ -81,7 +80,6 @@ function QcTargetSubTable({
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h3 className="text-xs font-bold text-slate-900">{title}</h3>
-          <p className="text-xs text-slate-700 mt-0.5">{description}</p>
         </div>
 
         {targetRows.length > 1 && (
@@ -134,7 +132,7 @@ function QcTargetSubTable({
                       ) : (
                         <span className="inline-flex items-center gap-1 text-amber-800 font-medium">
                           <WarningCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          Belum dipilih
+                          Not selected
                         </span>
                       )}
                     </td>
@@ -150,7 +148,7 @@ function QcTargetSubTable({
                     return (
                       <td key={analyte} className="p-2 min-w-[130px]">
                         <label htmlFor={inputId} className="sr-only">
-                          {title} {analyte} ({unit}) untuk {row.id || `baris ${originalIndex + 1}`}
+                          {title} {analyte} ({unit}) for {row.id || `row ${originalIndex + 1}`}
                         </label>
                         <input
                           id={inputId}
@@ -162,7 +160,7 @@ function QcTargetSubTable({
                           onChange={(e) =>
                             handleValueChange(originalIndex, analyte, e.target.value)
                           }
-                          placeholder={`Wajib > 0 (${unit})`}
+                          placeholder={`Required > 0 (${unit})`}
                           aria-invalid={!isValid}
                           className={`w-full min-h-10 px-2.5 py-1.5 rounded-md border font-mono text-xs text-slate-900 placeholder:text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
                             isValid ? 'border-slate-500 bg-white' : 'border-amber-700 bg-amber-50'
@@ -203,32 +201,32 @@ export function QcTargetParametersPanel({
     <div className="space-y-4 pt-2 border-t border-slate-200">
       {ccvRows.length > 0 && (
         <QcTargetSubTable
-          title={`Konsentrasi Target CCV (expectedConc, ${unit})`}
-          caption="Tabel konsentrasi target teoritis untuk setiap baris CCV per analit"
-          description="Wajib diisi (> 0) untuk menghitung % recovery CCV sesuai profil QC."
+          title={`CCV Target Concentration (expectedConc, ${unit})`}
+          caption="Theoretical target concentration table for each CCV row per analyte"
+          description="Required (> 0) to calculate CCV % recovery against the QC profile."
           fieldKey="expectedConc"
           targetRows={ccvRows}
           allQcRows={qcRows}
           analytes={analytes}
           unit={unit}
           showParent={false}
-          copyButtonLabel="Samakan dari CCV pertama"
+          copyButtonLabel="Copy from first CCV"
           onChange={onChange}
         />
       )}
 
       {spikeRows.length > 0 && (
         <QcTargetSubTable
-          title={`Konsentrasi Standar Spike Ditambahkan (spikeAdded, ${unit})`}
-          caption="Tabel konsentrasi standar spike yang ditambahkan ke sampel untuk setiap baris Matrix Spike"
-          description="Wajib diisi (> 0) untuk menghitung % recovery matrix spike terhadap sampel induknya."
+          title={`Added Spike Concentration (spikeAdded, ${unit})`}
+          caption="Added spike concentration table for each Matrix Spike row per analyte"
+          description="Required (> 0) to calculate matrix spike % recovery relative to its parent sample."
           fieldKey="spikeAdded"
           targetRows={spikeRows}
           allQcRows={qcRows}
           analytes={analytes}
           unit={unit}
           showParent={true}
-          copyButtonLabel="Samakan dari Spike pertama"
+          copyButtonLabel="Copy from first Spike"
           onChange={onChange}
         />
       )}

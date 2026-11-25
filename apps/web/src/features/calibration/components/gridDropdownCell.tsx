@@ -177,9 +177,9 @@ const DropdownCellEditor: ProvideEditorComponent<GridDropdownCell> = ({
     >
       {options.length === 0 ? (
         <div className="px-3 py-2.5 text-slate-700 space-y-1.5">
-          <p className="font-medium text-slate-900">Belum ada pilihan tersedia</p>
+          <p className="font-medium text-slate-900">No options available</p>
           <p className="text-[11px] text-slate-600 leading-relaxed">
-            {data.emptyMessage ?? 'Tambahkan baris bertipe sample di Tabel Sampel terlebih dahulu.'}
+            {data.emptyMessage ?? 'Add a sample row in the Sample Table first.'}
           </p>
         </div>
       ) : (
@@ -300,7 +300,7 @@ export const gridDropdownRenderer: CustomRenderer<GridDropdownCell> = {
         Math.max(10, pillWidth - 14),
       );
     } else {
-      const displayText = matched?.label || value || placeholder || 'Pilih...';
+      const displayText = matched?.label || value || placeholder || 'Select...';
       ctx.fillStyle = value ? theme.textDark : '#475569';
       ctx.textBaseline = 'middle';
       ctx.fillText(

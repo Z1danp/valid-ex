@@ -84,7 +84,7 @@ export function QcDataGrid({
       availableParents.map((sampleId) => ({
         value: sampleId,
         label: sampleId,
-        description: 'Sampel acuan dari Tabel Sampel',
+        description: 'Reference sample from Sample Table',
         tone: 'neutral',
       })),
     [availableParents],
@@ -103,9 +103,9 @@ export function QcDataGrid({
     });
 
     cols.push(
-      { id: 'type', title: 'Tipe QC', width: colWidths.type ?? 135 },
+      { id: 'type', title: 'QC Type', width: colWidths.type ?? 135 },
       { id: 'parent', title: 'Parent', width: colWidths.parent ?? 135 },
-      { id: 'weight', title: 'Bobot (g)', width: colWidths.weight ?? 92 },
+      { id: 'weight', title: 'Weight (g)', width: colWidths.weight ?? 92 },
       { id: 'vol', title: 'Vol (mL)', width: colWidths.vol ?? 84 },
       { id: 'df', title: 'dF', width: colWidths.df ?? 68 },
     );
@@ -156,7 +156,7 @@ export function QcDataGrid({
         return buildDropdownCell({
           value: item.type,
           options: QC_TYPE_OPTIONS,
-          ariaLabel: `Pilih tipe QC untuk ${item.id || `baris ${row + 1}`}`,
+          ariaLabel: `Select QC type for ${item.id || `row ${row + 1}`}`,
         });
       }
 
@@ -167,9 +167,9 @@ export function QcDataGrid({
         return buildDropdownCell({
           value: item.parent ?? '',
           options: parentDropdownOptions,
-          placeholder: 'Pilih sample...',
-          emptyMessage: 'Belum ada baris bertipe sample di Tabel Sampel.',
-          ariaLabel: `Pilih Parent sampel untuk ${item.id || `baris ${row + 1}`}`,
+          placeholder: 'Select sample...',
+          emptyMessage: 'No sample rows available in the Sample Table yet.',
+          ariaLabel: `Select parent sample for ${item.id || `row ${row + 1}`}`,
           warnIfUnlisted: true,
         });
       }
@@ -390,7 +390,7 @@ export function QcDataGrid({
 
       if (onNotice) {
         onNotice(
-          `Berhasil menempelkan ${appliedRows} baris QC dari clipboard ke baris ${startRow + 1}.`,
+          `Pasted ${appliedRows} QC ${appliedRows === 1 ? 'row' : 'rows'} from clipboard at row ${startRow + 1}.`,
         );
       }
 
@@ -413,7 +413,7 @@ export function QcDataGrid({
   const handleAddQcRow = useCallback(() => {
     if (totalBatchRows >= MAX_BATCH_SAMPLE_ROWS) {
       onNotice?.(
-        `Batas maksimum ${MAX_BATCH_SAMPLE_ROWS} baris gabungan sampel dan QC tercapai (Invariant T2).`,
+        `Maximum limit of ${MAX_BATCH_SAMPLE_ROWS} combined sample and QC rows reached.`,
       );
       return;
     }
@@ -497,10 +497,10 @@ export function QcDataGrid({
   const activeCellDesc = useMemo(() => {
     if (selection.current) {
       const [col, row] = selection.current.cell;
-      const colTitle = columns[col]?.title ?? `Kolom ${col + 1}`;
-      return `Sel Aktif: Baris ${row + 1}, ${colTitle}`;
+      const colTitle = columns[col]?.title ?? `Column ${col + 1}`;
+      return `Active Cell: Row ${row + 1}, ${colTitle}`;
     }
-    return 'Pilih sel atau blok rentang QC';
+    return 'Select a QC cell or range';
   }, [columns, selection]);
 
   const readingHeaderPreview = analytes.map((a) =>
@@ -518,7 +518,7 @@ export function QcDataGrid({
             className="inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 text-xs rounded-lg border border-slate-500 bg-white hover:bg-slate-50 font-medium text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Tambah Baris QC
+            Add QC Row
           </button>
           <button
             type="button"
@@ -531,7 +531,9 @@ export function QcDataGrid({
             }`}
           >
             <Trash className="w-3.5 h-3.5" aria-hidden="true" />
-            {selectedRowCount > 0 ? `Hapus (${selectedRowCount}) Baris` : 'Hapus Baris'}
+            {selectedRowCount > 0
+              ? `Delete ${selectedRowCount} ${selectedRowCount === 1 ? 'Row' : 'Rows'}`
+              : 'Delete Row'}
           </button>
         </div>
 
@@ -545,7 +547,7 @@ export function QcDataGrid({
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-300 text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
-            {qcRows.length} Baris QC
+            {qcRows.length} QC {qcRows.length === 1 ? 'Row' : 'Rows'}
           </span>
         </div>
       </div>
@@ -554,14 +556,14 @@ export function QcDataGrid({
         <div className="rounded-lg border border-dashed border-slate-400 bg-slate-50 p-6 text-center space-y-3">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-slate-900">
-              Belum ada baris kontrol mutu (Blanko Metode, CCV, Spike, Duplo)
+              No quality control rows yet (Method Blank, CCV, Spike, Duplicate)
             </p>
             <p className="text-xs text-slate-700 max-w-lg mx-auto">
-              Tambahkan minimal 1 baris{' '}
-              <code className="font-mono text-slate-900">blank_method</code> untuk koreksi blanko,
-              serta baris <code className="font-mono text-slate-900">ccv</code>,{' '}
-              <code className="font-mono text-slate-900">spike</code>, atau{' '}
-              <code className="font-mono text-slate-900">duplicate</code> sesuai profil QC.
+              Add at least 1{' '}
+              <code className="font-mono text-slate-900">blank_method</code> row for blank
+              correction, plus <code className="font-mono text-slate-900">ccv</code>,{' '}
+              <code className="font-mono text-slate-900">spike</code>, or{' '}
+              <code className="font-mono text-slate-900">duplicate</code> rows per your QC profile.
             </p>
           </div>
           <button
@@ -571,7 +573,7 @@ export function QcDataGrid({
             className="inline-flex items-center gap-1.5 min-h-11 px-4 py-2 text-xs rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium transition-colors disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
-            Tambah Baris QC Pertama
+            Add First QC Row
           </button>
         </div>
       ) : (
@@ -588,7 +590,7 @@ export function QcDataGrid({
             onRowAppended={handleAddQcRow}
             trailingRowOptions={{
               tint: true,
-              hint: 'Tambah QC...',
+              hint: 'Add QC...',
               sticky: false,
             }}
             rowMarkers="both"
@@ -605,29 +607,6 @@ export function QcDataGrid({
           />
         </div>
       )}
-
-      <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300">
-        <PasteClipboard className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" aria-hidden="true" />
-        <div className="space-y-1 leading-relaxed">
-          <div>
-            <strong>Format Kolom Excel (Tabel QC):</strong>{' '}
-            <code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-300">
-              Sample ID | {readingHeaderPreview.join(' | ')} | Tipe QC | Parent | Bobot (g) | Vol
-              (mL) | dF
-            </code>
-          </div>
-          <div className="text-slate-600">
-            Kolom <strong>Parent</strong> diblokir (<code className="font-mono">--</code>) untuk{' '}
-            <code className="font-mono text-slate-900">blank_method</code> dan{' '}
-            <code className="font-mono text-slate-900">ccv</code>. Kolom <strong>Bobot (g)</strong>,{' '}
-            <strong>Vol (mL)</strong>, dan <strong>dF</strong> juga diblokir (
-            <code className="font-mono">--</code>) untuk{' '}
-            <code className="font-mono text-slate-900">blank_method</code> dan{' '}
-            <code className="font-mono text-slate-900">ccv</code> karena diukur langsung sebagai
-            larutan tanpa preparasi bobot padatan.
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

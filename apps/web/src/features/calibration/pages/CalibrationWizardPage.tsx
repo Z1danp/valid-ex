@@ -102,7 +102,7 @@ export default function CalibrationWizardPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  const [title, setTitle] = useState('Pengujian ICP-MS Logam Berat Beras Putih');
+  const [title, setTitle] = useState('ICP-MS Heavy Metals Analysis: White Rice');
   const [instrument, setInstrument] = useState<Instrument>('ICP-MS');
   const [inputMode, setInputMode] = useState<InputMode>('raw_signal');
   const [unit, setUnit] = useState<SolutionConcUnit>('ppm');
@@ -110,6 +110,7 @@ export default function CalibrationWizardPage() {
 
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
   const [editingAnalyte, setEditingAnalyte] = useState<string | null>(null);
+  const [analyteError, setAnalyteError] = useState<string | null>(null);
 
   const [selectedAnalyte, setSelectedAnalyte] = useState<string>(INITIAL_ANALYTES[0] ?? '');
 
@@ -156,6 +157,7 @@ export default function CalibrationWizardPage() {
     const raw = rawSymbol.trim();
     if (!raw) return;
 
+    setAnalyteError(null);
     const formatted = raw.charAt(0).toUpperCase() + raw.slice(1);
     if (analytes.includes(formatted)) {
       setSelectedAnalyte(formatted);
@@ -170,17 +172,20 @@ export default function CalibrationWizardPage() {
     const clean = newSymbolRaw.trim();
     if (!clean) {
       setEditingAnalyte(null);
+      setAnalyteError(null);
       return;
     }
     const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
     if (formatted === oldSymbol) {
       setEditingAnalyte(null);
+      setAnalyteError(null);
       return;
     }
     if (analytes.includes(formatted)) {
-      alert(`Analit ${formatted} sudah ada dalam daftar.`);
+      setAnalyteError(`Analyte ${formatted} is already in the list.`);
       return;
     }
+    setAnalyteError(null);
 
     setAnalytes((prev) => prev.map((a) => (a === oldSymbol ? formatted : a)));
 
@@ -246,12 +251,12 @@ export default function CalibrationWizardPage() {
       <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
-            Form Wizard Kalibrasi &amp; Kuantifikasi
+            CALIBRATION &amp; QUANTIFICATION WIZARD
           </span>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 mt-0.5">
-            {step === 1 && 'Langkah 1: Metadata & Konfigurasi Unit Metrologi'}
-            {step === 2 && 'Langkah 2: DataGrid Standar & Live Preview Kurva'}
-            {step === 3 && 'Langkah 3: DataGrid Sampel Uji & Kontrol Mutu'}
+            {step === 1 && 'Step 1: Batch Setup & Units'}
+            {step === 2 && 'Step 2: Calibration Standards'}
+            {step === 3 && 'Step 3: Sample & QC DataGrid'}
           </h1>
         </div>
 
@@ -259,47 +264,47 @@ export default function CalibrationWizardPage() {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className={`px-3 py-1 rounded-md font-medium transition-colors ${
+            className={`px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 1
                 ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                : 'bg-slate-100 text-slate-700 hover:text-slate-900'
             }`}
           >
-            1. Metadata
+            1. Setup
           </button>
-          <span className="text-slate-300">/</span>
+          <span className="text-slate-400" aria-hidden="true">/</span>
           <button
             type="button"
             onClick={() => canProceedToStep2 && setStep(2)}
             disabled={!canProceedToStep2}
-            title={!canProceedToStep2 ? 'Tambahkan minimal 1 analit terlebih dahulu' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${
+            title={!canProceedToStep2 ? 'Add at least 1 analyte first' : undefined}
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 2
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep2
-                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-700 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-500 cursor-not-allowed'
             }`}
           >
-            {!canProceedToStep2 && <Lock className="w-2.5 h-2.5" />}
-            2. Standar
+            {!canProceedToStep2 && <Lock className="w-2.5 h-2.5" aria-hidden="true" />}
+            2. Standards
           </button>
-          <span className="text-slate-300">/</span>
+          <span className="text-slate-400" aria-hidden="true">/</span>
           <button
             type="button"
             onClick={() => canProceedToStep3 && setStep(3)}
             disabled={!canProceedToStep3}
-            title={!canProceedToStep3 ? 'Lengkapi deret standar terlebih dahulu' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors ${
+            title={!canProceedToStep3 ? 'Complete the calibration standards series first' : undefined}
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 3
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep3
-                  ? 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                  : 'bg-slate-100/60 text-slate-300 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-700 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-500 cursor-not-allowed'
             }`}
           >
-            {!canProceedToStep3 && <Lock className="w-2.5 h-2.5" />}
-            3. Sampel
+            {!canProceedToStep3 && <Lock className="w-2.5 h-2.5" aria-hidden="true" />}
+            3. Samples
           </button>
         </div>
       </div>
@@ -307,7 +312,11 @@ export default function CalibrationWizardPage() {
       {step === 1 && (
         <MetadataWizard
           editingAnalyte={editingAnalyte}
-          setEditingAnalyte={setEditingAnalyte}
+          setEditingAnalyte={(val) => {
+            setEditingAnalyte(val);
+            setAnalyteError(null);
+          }}
+          analyteError={analyteError}
           title={title}
           analytes={analytes}
           handleRemoveAnalyte={handleRemoveAnalyte}
@@ -340,6 +349,7 @@ export default function CalibrationWizardPage() {
           onNotice={handleNotice}
           canProceedToStep3={canProceedToStep3}
           setStep={setStep}
+          metrologyUnits= {signalUnit}
         />
       )}
 

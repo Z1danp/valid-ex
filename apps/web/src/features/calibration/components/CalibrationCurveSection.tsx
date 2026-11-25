@@ -48,13 +48,13 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-5 space-y-4 shadow-xs">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-semibold uppercase">
-              Kurva Kalibrasi {curve.name} ({curve.symbol})
+              Calibration Curve: {curve.name} ({curve.symbol})
             </span>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-900 font-mono mt-1">
-              Regresi OLS: y = {curve.slope.toFixed(4)}x + {curve.intercept.toFixed(4)}
+              OLS Regression: y = {curve.slope.toFixed(4)}x + {curve.intercept.toFixed(4)}
             </h2>
           </div>
 
@@ -71,13 +71,13 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
                 dataKey="nominal"
                 type="number"
                 unit=" ppb"
-                tick={{ fontSize: 10, fill: '#64748b' }}
+                tick={{ fontSize: 10, fill: '#475569' }}
               />
               <YAxis
                 dataKey="actualSignal"
                 type="number"
                 unit=" cps"
-                tick={{ fontSize: 10, fill: '#64748b' }}
+                tick={{ fontSize: 10, fill: '#475569' }}
               />
               <Tooltip
                 contentStyle={{
@@ -85,11 +85,11 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
                   borderRadius: '8px',
                   border: '1px solid #e2e8f0',
                 }}
-                formatter={(value: any, name: any) => [
+                formatter={(value: unknown, name: unknown) => [
                   `${Number(value).toFixed(2)} cps`,
-                  name === 'actualSignal' ? 'Signal Aktual' : 'Garis Regresi',
+                  name === 'actualSignal' ? 'Actual Signal' : 'Regression Line',
                 ]}
-                labelFormatter={(label: any) => `Konsentrasi: ${label} ppb`}
+                labelFormatter={(label: unknown) => `Concentration: ${label} ppb`}
               />
               <Scatter name="actualSignal" dataKey="actualSignal" fill="#0f172a" shape="circle" />
               <Line
@@ -106,17 +106,17 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
 
         <div className="grid grid-cols-3 gap-2.5 pt-1 text-xs font-mono">
           <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
-            <div className="text-[10px] text-slate-500 uppercase font-sans">Slope (m)</div>
+            <div className="text-[10px] text-slate-600 uppercase font-sans">Slope (m)</div>
             <div className="text-xs font-bold text-slate-900 mt-0.5">{curve.slope.toFixed(4)}</div>
           </div>
           <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
-            <div className="text-[10px] text-slate-500 uppercase font-sans">Intercept (c)</div>
+            <div className="text-[10px] text-slate-600 uppercase font-sans">Intercept (c)</div>
             <div className="text-xs font-bold text-slate-900 mt-0.5">
               {curve.intercept.toFixed(4)}
             </div>
           </div>
           <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50">
-            <div className="text-[10px] text-slate-500 uppercase font-sans">Korelasi (R&sup2;)</div>
+            <div className="text-[10px] text-slate-600 uppercase font-sans">Det. Coeff. (R&sup2;)</div>
             <div className="text-xs font-bold text-slate-900 mt-0.5">
               {curve.rSquared.toFixed(6)}
             </div>
@@ -127,18 +127,20 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
       <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 space-y-3 shadow-xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700 font-mono">
-            Deret Standar {curve.name} ({curve.symbol})
+            Calibration Standards: {curve.name} ({curve.symbol})
           </h2>
-          <span className="text-[11px] font-mono text-slate-500">6 titik baku</span>
+          <span className="text-[11px] font-mono text-slate-600">
+            {curve.standards.length} standard points
+          </span>
         </div>
 
         <div className="overflow-x-auto border border-slate-200 rounded-lg">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-mono">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-mono">
               <tr>
-                <th className="p-2">Label</th>
-                <th className="p-2 text-right">Nominal (ppb)</th>
-                <th className="p-2 text-right">Signal (cps)</th>
+                <th scope="col" className="p-2">Label</th>
+                <th scope="col" className="p-2 text-right">Nominal (ppb)</th>
+                <th scope="col" className="p-2 text-right">Signal (cps)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-mono">
@@ -153,8 +155,8 @@ export default function CalibrationCurveSection({ curve }: CalibrationCurveSecti
           </table>
         </div>
 
-        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-mono">
-          Koreksi Blanko {curve.symbol}: {curve.standards[0]?.signal} cps
+        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 font-mono">
+          Blank Correction ({curve.symbol}): {curve.standards[0]?.signal} cps
         </div>
       </div>
     </div>

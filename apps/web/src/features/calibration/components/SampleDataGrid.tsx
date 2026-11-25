@@ -90,7 +90,7 @@ export function SampleDataGrid({
     });
 
     cols.push(
-      { id: 'weight', title: 'Bobot (g)', width: colWidths.weight ?? 92 },
+      { id: 'weight', title: 'Weight (g)', width: colWidths.weight ?? 92 },
       { id: 'vol', title: 'Vol (mL)', width: colWidths.vol ?? 84 },
       { id: 'df', title: 'dF', width: colWidths.df ?? 68 },
     );
@@ -298,7 +298,7 @@ export function SampleDataGrid({
 
       if (onNotice) {
         onNotice(
-          `Berhasil menempelkan ${appliedRows} baris sampel dari clipboard ke baris ${startRow + 1}.`,
+          `Pasted ${appliedRows} sample ${appliedRows === 1 ? 'row' : 'rows'} from clipboard at row ${startRow + 1}.`,
         );
       }
 
@@ -321,7 +321,7 @@ export function SampleDataGrid({
   const handleAddSample = useCallback(() => {
     if (totalBatchRows >= MAX_BATCH_SAMPLE_ROWS) {
       onNotice?.(
-        `Batas maksimum ${MAX_BATCH_SAMPLE_ROWS} baris gabungan sampel dan QC tercapai (Invariant T2).`,
+        `Maximum limit of ${MAX_BATCH_SAMPLE_ROWS} combined sample and QC rows reached.`,
       );
       return;
     }
@@ -346,7 +346,7 @@ export function SampleDataGrid({
 
     if (selectedRows.length > 0) {
       if (samples.length - selectedRows.length < 1) {
-        onNotice?.('Minimal harus ada 1 baris sampel uji pada Tabel Sampel.');
+        onNotice?.('Sample Table must contain at least 1 test sample row.');
         return;
       }
       onChange(samples.filter((_, i) => !selectedRows.includes(i)));
@@ -360,7 +360,7 @@ export function SampleDataGrid({
     if (selection.current) {
       const targetRow = selection.current.cell[1];
       if (samples.length <= 1) {
-        onNotice?.('Minimal harus ada 1 baris sampel uji pada Tabel Sampel.');
+        onNotice?.('Sample Table must contain at least 1 test sample row.');
         return;
       }
       onChange(samples.filter((_, i) => i !== targetRow));
@@ -372,7 +372,7 @@ export function SampleDataGrid({
       if (sel.rows.length > 0) {
         const selectedRows = sel.rows.toArray();
         if (samples.length - selectedRows.length < 1) {
-          onNotice?.('Minimal harus ada 1 baris sampel uji pada Tabel Sampel.');
+          onNotice?.('Sample Table must contain at least 1 test sample row.');
           return false;
         }
         onChange(samples.filter((_, i) => !selectedRows.includes(i)));
@@ -417,10 +417,10 @@ export function SampleDataGrid({
   const activeCellDesc = useMemo(() => {
     if (selection.current) {
       const [col, row] = selection.current.cell;
-      const colTitle = columns[col]?.title ?? `Kolom ${col + 1}`;
-      return `Sel Aktif: Baris ${row + 1}, ${colTitle}`;
+      const colTitle = columns[col]?.title ?? `Column ${col + 1}`;
+      return `Active Cell: Row ${row + 1}, ${colTitle}`;
     }
-    return 'Pilih sel atau blok rentang untuk copy/paste';
+    return 'Select a cell or range to copy/paste';
   }, [columns, selection]);
 
   const readingHeaderPreview = analytes.map((a) =>
@@ -438,7 +438,7 @@ export function SampleDataGrid({
             className="inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 text-xs rounded-lg border border-slate-500 bg-white hover:bg-slate-50 font-medium text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Tambah Baris Sampel
+            Add Sample Row
           </button>
           <button
             type="button"
@@ -451,7 +451,9 @@ export function SampleDataGrid({
             }`}
           >
             <Trash className="w-3.5 h-3.5" aria-hidden="true" />
-            {selectedRowCount > 0 ? `Hapus (${selectedRowCount}) Baris` : 'Hapus Baris'}
+            {selectedRowCount > 0
+              ? `Delete ${selectedRowCount} ${selectedRowCount === 1 ? 'Row' : 'Rows'}`
+              : 'Delete Row'}
           </button>
           <label className="inline-flex items-center gap-2 min-h-9 px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-xs text-slate-700 cursor-pointer select-none">
             <input
@@ -460,7 +462,7 @@ export function SampleDataGrid({
               onChange={(e) => setShowLabSampleId(e.target.checked)}
               className="w-3.5 h-3.5 accent-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             />
-            <span>Tampilkan Kolom Lab Sample ID</span>
+            <span>Show Lab Sample ID Column</span>
           </label>
         </div>
 
@@ -474,7 +476,7 @@ export function SampleDataGrid({
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-300 text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
-            {totalBatchRows} / {MAX_BATCH_SAMPLE_ROWS} Total Baris (Invariant T2)
+            {totalBatchRows} / {MAX_BATCH_SAMPLE_ROWS} Total Rows
           </span>
         </div>
       </div>
@@ -491,7 +493,7 @@ export function SampleDataGrid({
           onRowAppended={handleAddSample}
           trailingRowOptions={{
             tint: true,
-            hint: 'Tambah...',
+            hint: 'Add row...',
             sticky: false,
           }}
           rowMarkers="both"
@@ -508,20 +510,9 @@ export function SampleDataGrid({
       </div>
 
       <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300">
-        <PasteClipboard className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-1 leading-relaxed">
-          <div>
-            <strong>Format Kolom Excel (Tabel Sampel):</strong>{' '}
-            <code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-300">
-              Sample ID{showLabSampleId ? ' | Lab Sample ID' : ''} |{' '}
-              {readingHeaderPreview.join(' | ')} | Bobot (g) | Vol (mL) | dF
-            </code>
-          </div>
           <div className="text-slate-600">
-            Seluruh baris di tabel ini otomatis bertipe{' '}
-            <code className="font-mono text-slate-900">sample</code> dan memiliki bobot sampel.
-            Blanko metode (<code className="font-mono text-slate-900">blank_method</code>) dikelola
-            di Tabel Kontrol Mutu / QC di bawah.
+            <strong>Method blanks</strong> are managed in the Quality Control / QC Table below.
           </div>
         </div>
       </div>

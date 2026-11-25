@@ -94,16 +94,15 @@ export default function SampleWizard({
       <section className="bg-white rounded-xl border border-slate-300 p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Tabel 1: Sampel Uji</h2>
+            <h2 className="text-sm font-bold text-slate-900">Table 1: Test Samples</h2>
             <p className="text-xs text-slate-700 mt-0.5">
-              Khusus untuk baris <code className="font-mono text-slate-900">sample</code> yang
-              memiliki bobot penimbangan. Tempel langsung blok sel dari Excel dengan Ctrl+V.
+              Paste cell blocks directly from Excel with Ctrl+V.
             </p>
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono text-slate-800 self-start sm:self-auto">
             <Atom className="w-3.5 h-3.5 text-slate-700" aria-hidden="true" />
-            {analytes.join(', ')} ({analytes.length} analit)
+            {analytes.join(', ')} ({analytes.length} {analytes.length === 1 ? 'analyte' : 'analytes'})
           </span>
         </div>
 
@@ -123,22 +122,18 @@ export default function SampleWizard({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200">
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Tabel 2: Kontrol Mutu / QC (Blanko Metode, CCV, Matrix Spike, Duplo)
+              Table 2: Quality Control / QC (Method Blank, CCV, Matrix Spike, Duplicate)
             </h2>
             <p className="text-xs text-slate-700 mt-0.5">
-              Memuat <code className="font-mono text-slate-900">blank_method</code> dan{' '}
-              <code className="font-mono text-slate-900">ccv</code> (larutan QC tanpa Bobot, Vol,
-              &amp; dF padatan), serta <code className="font-mono text-slate-900">spike</code> dan{' '}
-              <code className="font-mono text-slate-900">duplicate</code>. Pilih{' '}
-              <code className="font-mono text-slate-900">Parent</code> dari daftar sampel untuk{' '}
-              <code className="font-mono text-slate-900">spike</code> dan{' '}
+              Includes <code className="font-mono text-slate-900">blank_method</code> and{' '}
+              <code className="font-mono text-slate-900">ccv</code> (solution QC rows without solid
+              Weight, Vol, or dF), plus <code className="font-mono text-slate-900">spike</code> and{' '}
+              <code className="font-mono text-slate-900">duplicate</code>. Select a{' '}
+              <code className="font-mono text-slate-900">Parent</code> from Table 1 for{' '}
+              <code className="font-mono text-slate-900">spike</code> and{' '}
               <code className="font-mono text-slate-900">duplicate</code>.
             </p>
           </div>
-
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono text-slate-800 self-start sm:self-auto">
-            Parent tersedia: {availableParents.length} sampel
-          </span>
         </div>
 
         <QcDataGrid
@@ -178,8 +173,7 @@ export default function SampleWizard({
           <div className="flex items-center gap-2 font-medium">
             <CheckCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>
-              Validasi struktur sampel dan QC lengkap ({totalBatchRows} baris siap dikirim ke
-              gateway).
+              Sample and QC structure validated ({totalBatchRows} rows ready to submit to gateway).
             </span>
           </div>
         ) : (
@@ -190,7 +184,11 @@ export default function SampleWizard({
               ) : (
                 <WarningTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
               )}
-              <span>{validationIssues.length} item perlu dilengkapi sebelum simpan batch:</span>
+              <span>
+                {validationIssues.length}{' '}
+                {validationIssues.length === 1 ? 'item requires' : 'items require'} attention before
+                saving batch:
+              </span>
             </div>
             <ul className="list-disc pl-5 space-y-1">
               {validationIssues.slice(0, 6).map((issue, idx) => (
@@ -198,7 +196,8 @@ export default function SampleWizard({
               ))}
               {validationIssues.length > 6 && (
                 <li className="font-medium">
-                  Dan {validationIssues.length - 6} item validasi lainnya.
+                  And {validationIssues.length - 6} more validation{' '}
+                  {validationIssues.length - 6 === 1 ? 'issue' : 'issues'}.
                 </li>
               )}
             </ul>
@@ -213,7 +212,7 @@ export default function SampleWizard({
           className="inline-flex items-center justify-center gap-2 min-h-11 px-4 py-2.5 rounded-lg border border-slate-500 bg-white hover:bg-slate-50 text-slate-900 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-          Kembali ke Deret Standar
+          Back to Standards
         </button>
         <button
           type="button"
@@ -221,7 +220,7 @@ export default function SampleWizard({
           className="inline-flex items-center justify-center gap-2 min-h-11 px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           <Table2Columns className="w-4 h-4" aria-hidden="true" />
-          Validasi &amp; Simpan Batch (Submit ACID)
+          Save Batch
         </button>
       </div>
     </div>

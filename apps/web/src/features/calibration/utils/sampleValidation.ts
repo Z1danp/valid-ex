@@ -51,12 +51,12 @@ export const SAMPLE_TYPE_META: Record<
 > = {
   sample: {
     label: 'sample',
-    description: 'Sampel uji rutin laboratorium',
+    description: 'Routine laboratory test sample',
     tone: 'emerald',
   },
   blank_method: {
     label: 'blank_method',
-    description: 'Blanko metode preparasi asam (C_blank)',
+    description: 'Acid digestion method blank (C_blank)',
     tone: 'slate',
   },
   ccv: {
@@ -66,12 +66,12 @@ export const SAMPLE_TYPE_META: Record<
   },
   spike: {
     label: 'spike',
-    description: 'Matrix spike (wajib Parent dan Spike Added)',
+    description: 'Matrix spike (requires Parent and Spike Added)',
     tone: 'blue',
   },
   duplicate: {
     label: 'duplicate',
-    description: 'Ulangan duplo (wajib Parent)',
+    description: 'Duplicate sample (requires Parent)',
     tone: 'purple',
   },
 };
@@ -231,7 +231,7 @@ function checkPositiveTargetMap(
     issues.push({
       scope: 'qc',
       sampleId,
-      message: `${sampleId}: isi ${fieldLabel} (> 0) untuk analit ${missing.join(', ')}.`,
+      message: `${sampleId}: enter ${fieldLabel} (> 0) for ${missing.join(', ')}.`,
     });
   }
 }
@@ -247,21 +247,21 @@ export function validateBatchSamples(
   if (sampleRows.length === 0) {
     issues.push({
       scope: 'sample',
-      message: 'Tabel Sampel wajib berisi minimal 1 baris sampel uji.',
+      message: 'Sample Table must contain at least 1 test sample row.',
     });
   }
 
   if (totalRows > MAX_BATCH_SAMPLE_ROWS) {
     issues.push({
       scope: 'batch',
-      message: `Total baris sampel dan QC (${totalRows}) melebihi batas maksimum ${MAX_BATCH_SAMPLE_ROWS} baris per batch (Invariant T2).`,
+      message: `Total sample and QC rows (${totalRows}) exceed the maximum of ${MAX_BATCH_SAMPLE_ROWS} rows per batch.`,
     });
   }
 
   if (!qcRows.some((row) => row.type === 'blank_method')) {
     issues.push({
       scope: 'qc',
-      message: 'Tabel Kontrol Mutu (QC) wajib memiliki minimal 1 baris bertipe blank_method.',
+      message: 'QC Table must contain at least 1 blank_method row.',
     });
   }
 
@@ -284,19 +284,19 @@ export function validateBatchSamples(
 
   for (const { row, scope, labelIdx } of allTaggedRows) {
     const cleanId = row.id.trim();
-    const displayId = cleanId || `${scope === 'sample' ? 'Sampel' : 'QC'} baris ${labelIdx}`;
+    const displayId = cleanId || `${scope === 'sample' ? 'Sample' : 'QC'} row ${labelIdx}`;
 
     if (!cleanId) {
       issues.push({
         scope,
-        message: `${displayId}: Sample ID wajib diisi.`,
+        message: `${displayId}: Sample ID is required.`,
       });
     } else if ((idCounts.get(cleanId) ?? 0) > 1 && !reportedDuplicates.has(cleanId)) {
       reportedDuplicates.add(cleanId);
       issues.push({
         scope,
         sampleId: cleanId,
-        message: `Sample ID "${cleanId}" duplikat; setiap baris pada Tabel Sampel dan Tabel QC harus unik.`,
+        message: `Duplicate Sample ID "${cleanId}"; every row across Sample Table and QC Table must be unique.`,
       });
     }
 
@@ -305,21 +305,21 @@ export function validateBatchSamples(
         issues.push({
           scope,
           sampleId: cleanId,
-          message: `${displayId}: Bobot harus lebih besar dari 0.`,
+          message: `${displayId}: Weight must be greater than 0.`,
         });
       }
       if (row.vol === null || !Number.isFinite(row.vol) || row.vol <= 0) {
         issues.push({
           scope,
           sampleId: cleanId,
-          message: `${displayId}: Volume harus lebih besar dari 0.`,
+          message: `${displayId}: Volume must be greater than 0.`,
         });
       }
       if (row.df === null || !Number.isFinite(row.df) || row.df <= 0) {
         issues.push({
           scope,
           sampleId: cleanId,
-          message: `${displayId}: dF harus lebih besar dari 0.`,
+          message: `${displayId}: dF must be greater than 0.`,
         });
       }
     }
@@ -332,7 +332,7 @@ export function validateBatchSamples(
       issues.push({
         scope,
         sampleId: cleanId,
-        message: `${displayId}: pembacaan alat belum terisi untuk analit ${missingReadings.join(', ')}.`,
+        message: `${displayId}: instrument reading is missing for ${missingReadings.join(', ')}.`,
       });
     }
 
@@ -343,13 +343,13 @@ export function validateBatchSamples(
           issues.push({
             scope: 'qc',
             sampleId: cleanId,
-            message: `${displayId} (${row.type}): pilih Parent dari daftar sampel yang tersedia.`,
+            message: `${displayId} (${row.type}): select a Parent from the available samples.`,
           });
         } else if (parentId === cleanId || !availableParents.has(parentId)) {
           issues.push({
             scope: 'qc',
             sampleId: cleanId,
-            message: `${displayId}: Parent "${parentId}" tidak ditemukan sebagai baris sample di Tabel Sampel.`,
+            message: `${displayId}: Parent "${parentId}" was not found as a sample row in Sample Table.`,
           });
         }
       }
