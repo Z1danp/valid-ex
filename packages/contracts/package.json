@@ -6,7 +6,8 @@
   "description": "Single Source of Truth: OpenAPI 3.0+ contract + generated TypeScript types",
   "types": "./src/types.ts",
   "exports": {
-    ".": "./src/types.ts"
+    ".": "./src/types.ts",
+    "./openapi.yaml": "./openapi.yaml"
   },
   "scripts": {
     "gen": "openapi-typescript openapi.yaml -o src/types.ts",
