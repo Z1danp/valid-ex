@@ -1,10 +1,20 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'iconoir-react';
-import { type StandardRowItem } from '../components/StandardDataGrid';
+import {
+  assignAnalyteToGroup,
+  createInitialStandardGroups,
+  getDefaultCcvTargetByAnalyte,
+  isAllStandardsReady,
+  renameAnalyteInStandardGroups,
+  splitAnalyteToNewGroup,
+  syncStandardGroupsWithAnalytes,
+  toStandardRowInputs,
+  type StandardGroup,
+  type StandardGroupRow,
+} from '../utils/standardGroups';
 import {
   fillMissingCcvExpectedConc,
-  getDefaultCcvTargetFromStandards,
   removeAnalyteKeyInRows,
   renameAnalyteKeysInRows,
   syncParentReferencesOnSampleRename,
@@ -23,23 +33,6 @@ type InputMode = components['schemas']['InputMode'];
 type Instrument = components['schemas']['InstrumentType'];
 
 const INITIAL_ANALYTES: string[] = ['Cd'];
-
-const DEFAULT_LEVELS = [
-  { name: 'Blank', nominal: 0, signal: 0 },
-  { name: 'Std 10', nominal: 10, signal: 10 },
-  { name: 'Std 50', nominal: 50, signal: 50 },
-  { name: 'Std 100', nominal: 100, signal: 100 },
-  { name: 'Std 300', nominal: 300, signal: 300 },
-  { name: 'Std 500', nominal: 500, signal: 500 },
-];
-
-const INITIAL_STANDARDS: StandardRowItem[] = DEFAULT_LEVELS.map((lvl) => ({
-  standardName: lvl.name,
-  nominalConc: lvl.nominal,
-  readings: {
-    Cd: {nominalConc: lvl.nominal, signal: lvl.signal}
-  },
-}));
 
 const INITIAL_ROUTINE_SAMPLES: SampleRowState[] = [
   {
@@ -98,7 +91,6 @@ const INITIAL_QC_SAMPLES: SampleRowState[] = [
 ];
 
 export default function CalibrationWizardPage() {
-  /// state section
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -111,34 +103,41 @@ export default function CalibrationWizardPage() {
   const [analytes, setAnalytes] = useState<string[]>(INITIAL_ANALYTES);
   const [editingAnalyte, setEditingAnalyte] = useState<string | null>(null);
   const [analyteError, setAnalyteError] = useState<string | null>(null);
-
   const [selectedAnalyte, setSelectedAnalyte] = useState<string>(INITIAL_ANALYTES[0] ?? '');
 
-  const [standards, setStandards] = useState<StandardRowItem[]>(INITIAL_STANDARDS);
+  const [standardGroups, setStandardGroups] = useState<StandardGroup[]>(() =>
+    createInitialStandardGroups(INITIAL_ANALYTES),
+  );
   const [sampleRows, setSampleRows] = useState<SampleRowState[]>(INITIAL_ROUTINE_SAMPLES);
   const [qcRows, setQcRows] = useState<SampleRowState[]>(INITIAL_QC_SAMPLES);
-  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
+  const [pasteNotice, setPasteNotice] = useState<{
+    message: string;
+    tone: 'info' | 'warning';
+  } | null>(null);
+  const noticeTimerRef = useRef<number | null>(null);
 
-  // Progressive Wizard Gating: Step 2 requires >= 1 analyte, Step 3 requires standards filled
   const canProceedToStep2 = analytes.length > 0;
 
-  const isStandardsFilled = useMemo(() => {
-    if (standards.length < 3 || analytes.length === 0) return false;
-    return analytes.every((analyte) => {
-      const filledPoints = standards.filter((s) => {
-        const reading = s.readings[analyte];
-        return (
-          reading !== undefined && typeof reading.signal === 'number' && !isNaN(reading.signal)
-        );
-      });
-      return filledPoints.length >= 3;
-    });
-  }, [standards, analytes]);
+  const isStandardsFilled = useMemo(
+    () => isAllStandardsReady(standardGroups, analytes, 3),
+    [standardGroups, analytes],
+  );
 
   const canProceedToStep3 = canProceedToStep2 && isStandardsFilled;
-  const defaultCcvTarget = useMemo(() => getDefaultCcvTargetFromStandards(standards), [standards]);
 
-  // Auto-redirect to valid step if dependencies are deleted
+  const defaultCcvTarget = useMemo(
+    () => getDefaultCcvTargetByAnalyte(standardGroups, analytes),
+    [standardGroups, analytes],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current !== null) {
+        window.clearTimeout(noticeTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (analytes.length === 0 && step > 1) {
       setStep(1);
@@ -147,9 +146,8 @@ export default function CalibrationWizardPage() {
     }
   }, [analytes.length, canProceedToStep3, step]);
 
-  // Populate missing CCV expectedConc from the standard midpoint when entering Step 3.
   useEffect(() => {
-    if (step !== 3 || defaultCcvTarget === undefined) return;
+    if (step !== 3) return;
     setQcRows((prev) => fillMissingCcvExpectedConc(prev, analytes, defaultCcvTarget));
   }, [step, analytes, defaultCcvTarget]);
 
@@ -164,7 +162,9 @@ export default function CalibrationWizardPage() {
       return;
     }
 
-    setAnalytes((prev) => [...prev, formatted]);
+    const nextAnalytes = [...analytes, formatted];
+    setAnalytes(nextAnalytes);
+    setStandardGroups((prev) => syncStandardGroupsWithAnalytes(prev, nextAnalytes));
     setSelectedAnalyte((prev) => (prev ? prev : formatted));
   };
 
@@ -188,18 +188,7 @@ export default function CalibrationWizardPage() {
     setAnalyteError(null);
 
     setAnalytes((prev) => prev.map((a) => (a === oldSymbol ? formatted : a)));
-
-    setStandards((prev) =>
-      prev.map((row) => {
-        const readings = { ...row.readings };
-        if (readings[oldSymbol]) {
-          readings[formatted] = readings[oldSymbol]!;
-          delete readings[oldSymbol];
-        }
-        return { ...row, readings };
-      }),
-    );
-
+    setStandardGroups((prev) => renameAnalyteInStandardGroups(prev, oldSymbol, formatted));
     setSampleRows((prev) => renameAnalyteKeysInRows(prev, oldSymbol, formatted));
     setQcRows((prev) => renameAnalyteKeysInRows(prev, oldSymbol, formatted));
 
@@ -212,15 +201,7 @@ export default function CalibrationWizardPage() {
   const handleRemoveAnalyte = (symbol: string) => {
     const updated = analytes.filter((a) => a !== symbol);
     setAnalytes(updated);
-
-    setStandards((prev) =>
-      prev.map((row) => {
-        const readings = { ...row.readings };
-        delete readings[symbol];
-        return { ...row, readings };
-      }),
-    );
-
+    setStandardGroups((prev) => syncStandardGroupsWithAnalytes(prev, updated));
     setSampleRows((prev) => removeAnalyteKeyInRows(prev, symbol));
     setQcRows((prev) => removeAnalyteKeyInRows(prev, symbol));
 
@@ -229,19 +210,38 @@ export default function CalibrationWizardPage() {
     }
   };
 
+  const handleUpdateGroupRows = (groupId: string, rows: StandardGroupRow[]) => {
+    setStandardGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, rows } : g)));
+  };
+
+  const handleAssignAnalyteToGroup = (analyte: string, targetGroupId: string) => {
+    setStandardGroups((prev) => assignAnalyteToGroup(prev, analyte, targetGroupId));
+  };
+
+  const handleSplitAnalyteToNewGroup = (analyte: string) => {
+    setStandardGroups((prev) => splitAnalyteToNewGroup(prev, analyte));
+  };
+
   const handleRoutineSamplesChange = (nextSamples: SampleRowState[]) => {
     const syncedQc = syncParentReferencesOnSampleRename(qcRows, sampleRows, nextSamples);
     setSampleRows(nextSamples);
     setQcRows(syncedQc);
   };
 
-  const handleNotice = (msg: string) => {
-    setPasteNotice(msg);
-    setTimeout(() => setPasteNotice(null), 4000);
+  const handleNotice = (msg: string, tone: 'info' | 'warning' = 'info') => {
+    if (noticeTimerRef.current !== null) {
+      window.clearTimeout(noticeTimerRef.current);
+    }
+    setPasteNotice({ message: msg, tone });
+    noticeTimerRef.current = window.setTimeout(() => {
+      setPasteNotice(null);
+      noticeTimerRef.current = null;
+    }, 4500);
   };
 
   const handleSubmitBatch = () => {
-    // Prepared SampleRowInput[] payload for upcoming POST /api/v1/calibrations hook integration.
+    // Prepared OpenAPI StandardRowInput[] and SampleRowInput[] payloads for POST /api/v1/calibrations.
+    toStandardRowInputs(standardGroups);
     toSampleRowInputs(sampleRows, qcRows, analytes);
     navigate('/calibrations/batch-demo-1');
   };
@@ -250,7 +250,7 @@ export default function CalibrationWizardPage() {
     <div className="space-y-6">
       <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-600">
             CALIBRATION &amp; QUANTIFICATION WIZARD
           </span>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 mt-0.5">
@@ -260,50 +260,54 @@ export default function CalibrationWizardPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
           <button
             type="button"
             onClick={() => setStep(1)}
-            className={`px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+            className={`min-h-11 sm:min-h-9 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 1
                 ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-700 hover:text-slate-900'
+                : 'bg-slate-100 text-slate-800 hover:text-slate-900'
             }`}
           >
             1. Setup
           </button>
-          <span className="text-slate-400" aria-hidden="true">/</span>
+          <span className="text-slate-500" aria-hidden="true">
+            /
+          </span>
           <button
             type="button"
             onClick={() => canProceedToStep2 && setStep(2)}
             disabled={!canProceedToStep2}
             title={!canProceedToStep2 ? 'Add at least 1 analyte first' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+            className={`inline-flex items-center gap-1 min-h-11 sm:min-h-9 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 2
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep2
-                  ? 'bg-slate-100 text-slate-700 hover:text-slate-900'
-                  : 'bg-slate-100/60 text-slate-500 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-800 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-600 cursor-not-allowed'
             }`}
           >
-            {!canProceedToStep2 && <Lock className="w-2.5 h-2.5" aria-hidden="true" />}
+            {!canProceedToStep2 && <Lock className="w-3 h-3" aria-hidden="true" />}
             2. Standards
           </button>
-          <span className="text-slate-400" aria-hidden="true">/</span>
+          <span className="text-slate-500" aria-hidden="true">
+            /
+          </span>
           <button
             type="button"
             onClick={() => canProceedToStep3 && setStep(3)}
             disabled={!canProceedToStep3}
             title={!canProceedToStep3 ? 'Complete the calibration standards series first' : undefined}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+            className={`inline-flex items-center gap-1 min-h-11 sm:min-h-9 px-3 py-1 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               step === 3
                 ? 'bg-slate-900 text-white'
                 : canProceedToStep3
-                  ? 'bg-slate-100 text-slate-700 hover:text-slate-900'
-                  : 'bg-slate-100/60 text-slate-500 cursor-not-allowed'
+                  ? 'bg-slate-100 text-slate-800 hover:text-slate-900'
+                  : 'bg-slate-100/60 text-slate-600 cursor-not-allowed'
             }`}
           >
-            {!canProceedToStep3 && <Lock className="w-2.5 h-2.5" aria-hidden="true" />}
+            {!canProceedToStep3 && <Lock className="w-3 h-3" aria-hidden="true" />}
             3. Samples
           </button>
         </div>
@@ -339,8 +343,10 @@ export default function CalibrationWizardPage() {
       {step === 2 && (
         <StandardWizard
           analytes={analytes}
-          standards={standards}
-          setStandards={setStandards}
+          standardGroups={standardGroups}
+          onUpdateGroupRows={handleUpdateGroupRows}
+          onAssignAnalyte={handleAssignAnalyteToGroup}
+          onSplitAnalyte={handleSplitAnalyteToNewGroup}
           unit={unit}
           selectedAnalyte={selectedAnalyte}
           setSelectedAnalyte={setSelectedAnalyte}
@@ -349,7 +355,7 @@ export default function CalibrationWizardPage() {
           onNotice={handleNotice}
           canProceedToStep3={canProceedToStep3}
           setStep={setStep}
-          metrologyUnits= {signalUnit}
+          signalUnit={signalUnit}
         />
       )}
 
@@ -364,8 +370,8 @@ export default function CalibrationWizardPage() {
           unit={unit}
           inputMode={inputMode}
           signalUnit={signalUnit}
-          pasteNotice={pasteNotice}
-          onNotice={handleNotice}
+          pasteNotice={pasteNotice?.message ?? null}
+          onNotice={(msg) => handleNotice(msg, 'info')}
           setStep={setStep}
           onSubmitBatch={handleSubmitBatch}
         />

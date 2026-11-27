@@ -106,6 +106,8 @@ export function parseNumberFromInput(
   return parsed;
 }
 
+export { parseOptionalNumberFromInput } from '../utils/standardGroups';
+
 export function extractCellNumber(
   newValue: EditableGridCell,
   fallback: number,

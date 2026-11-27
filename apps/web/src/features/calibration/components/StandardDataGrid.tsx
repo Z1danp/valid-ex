@@ -10,69 +10,52 @@ import {
   type GridSelection,
   type Theme,
 } from '@glideapps/glide-data-grid';
-import { Plus, Trash, ViewGrid, PasteClipboard } from 'iconoir-react';
+import { Plus, Trash, ViewGrid } from 'iconoir-react';
 import type { components } from '@valid-ex/contracts';
+import { parseOptionalNumberFromInput } from './sampleGridShared';
+import { parseNominalFromName, type StandardGroupRow } from '../utils/standardGroups';
 
-type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit']
-export interface StandardReading {
-  nominalConc: number;
-  signal: number;
-}
-
-export interface StandardRowItem {
-  standardName: string;
-  nominalConc: number;
-  readings: Record<string, StandardReading>;
-}
+type SignalUnit = components['schemas']['MetrologyUnits']['signalUnit'];
 
 interface StandardDataGridProps {
-  standards: StandardRowItem[];
+  rows: StandardGroupRow[];
   analytes: string[];
-  onChange: (updated: StandardRowItem[]) => void;
+  onChange: (updated: StandardGroupRow[]) => void;
   onNotice?: (message: string) => void;
   unit: string;
-  signalUnit: SignalUnit
+  signalUnit: SignalUnit;
 }
 
 const GRID_THEME: Partial<Theme> = {
   accentColor: '#0f172a',
   accentLight: 'rgba(15, 23, 42, 0.08)',
   textDark: '#0f172a',
-  textMedium: '#64748b',
+  textMedium: '#475569',
   textHeader: '#334155',
   bgHeader: '#f8fafc',
   bgHeaderHovered: '#f1f5f9',
   bgCell: '#ffffff',
   bgCellMedium: '#fcfcfd',
-  borderColor: '#e2e8f0',
+  borderColor: '#cbd5e1',
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   headerFontStyle: '600 12px',
   baseFontStyle: '12px',
   editorFontSize: '12px',
 };
 
-export function parseNominalFromName(name: string, fallback: number): number {
-  const lower = name.toLowerCase().trim();
-  if (lower === 'blank' || lower === 'blanko' || lower === '0' || lower === 'calblank') {
-    return 0;
-  }
-  const match = name.match(/(\d+(\.\d+)?)/);
-  if (match && match[1]) {
-    return parseFloat(match[1]);
-  }
-  return fallback;
-}
+const ANALYTE_START_COL = 2;
 
 export function StandardDataGrid({
-  standards,
+  rows,
   analytes,
   onChange,
   onNotice,
   unit,
-  signalUnit
+  signalUnit,
 }: StandardDataGridProps) {
   const [colWidths, setColWidths] = useState<Record<string, number>>({
-    label: 150,
+    label: 140,
+    nominalConc: 155,
   });
 
   const [selection, setSelection] = useState<GridSelection>({
@@ -84,8 +67,13 @@ export function StandardDataGrid({
     const cols: GridColumn[] = [
       {
         id: 'label',
-        title: `Standard Label (${unit})`,
-        width: colWidths.label ?? 150,
+        title: 'Standard Name',
+        width: colWidths.label ?? 140,
+      },
+      {
+        id: 'nominalConc',
+        title: `Nominal Conc (${unit})`,
+        width: colWidths.nominalConc ?? 155,
       },
     ];
 
@@ -112,7 +100,7 @@ export function StandardDataGrid({
   const getCellContent = useCallback(
     (cell: Item): GridCell => {
       const [col, row] = cell;
-      const item = standards[row];
+      const item = rows[row];
 
       if (!item) {
         return {
@@ -131,65 +119,87 @@ export function StandardDataGrid({
         };
       }
 
-      const analyteIndex = col - 1;
-      const analyte = analytes[analyteIndex];
-      const reading = analyte ? (item.readings[analyte]?.signal ?? 0) : 0;
+      if (col === 1) {
+        return {
+          kind: GridCellKind.Number,
+          data: item.nominalConc,
+          displayData: item.nominalConc !== undefined ? String(item.nominalConc) : '',
+          allowOverlay: true,
+          readonly: false,
+        };
+      }
+
+      const analyte = analytes[col - ANALYTE_START_COL];
+      const reading = analyte ? item.signals[analyte] : undefined;
 
       return {
         kind: GridCellKind.Number,
         data: reading,
-        displayData: String(reading),
+        displayData: reading !== undefined ? String(reading) : '',
         allowOverlay: true,
         readonly: false,
       };
     },
-    [standards, analytes],
+    [rows, analytes],
   );
 
   const handleCellEdited = useCallback(
     (cell: Item, newValue: EditableGridCell) => {
       const [col, row] = cell;
-      const updated = [...standards];
+      const updated = [...rows];
       const target = updated[row];
       if (!target) return;
 
-      const targetRow: StandardRowItem = {
+      const targetRow: StandardGroupRow = {
         ...target,
-        readings: { ...target.readings },
+        signals: { ...target.signals },
       };
 
       if (col === 0 && newValue.kind === GridCellKind.Text) {
         const cleanName = newValue.data.trim();
         targetRow.standardName = cleanName;
-        const parsedNom = parseNominalFromName(cleanName, targetRow.nominalConc);
-        targetRow.nominalConc = parsedNom;
-        analytes.forEach((a) => {
-          targetRow.readings[a] = {
-            nominalConc: parsedNom,
-            signal: targetRow.readings[a]?.signal ?? 0,
-          };
-        });
-      } else if (col >= 1) {
-        const analyteIndex = col - 1;
-        const analyte = analytes[analyteIndex];
-        if (analyte) {
-          let val = 0;
-          if (newValue.kind === GridCellKind.Number) {
-            val = typeof newValue.data === 'number' && !isNaN(newValue.data) ? newValue.data : 0;
-          } else if (newValue.kind === GridCellKind.Text) {
-            val = parseFloat(newValue.data) || 0;
+        // Preserve manual Nominal Conc overrides unless the analyst cleared the numeric cell.
+        if (!targetRow.nominalConcManual) {
+          const parsed = parseNominalFromName(cleanName);
+          if (parsed !== undefined) {
+            targetRow.nominalConc = parsed;
           }
-          targetRow.readings[analyte] = {
-            nominalConc: targetRow.nominalConc,
-            signal: val,
-          };
+        }
+      } else if (col === 1) {
+        const raw =
+          newValue.kind === GridCellKind.Number || newValue.kind === GridCellKind.Text
+            ? newValue.data
+            : undefined;
+        const parsed = parseOptionalNumberFromInput(raw, false);
+        if (!parsed.valid) {
+          onNotice?.(`Nominal Conc (${unit}) must be 0 or a positive number.`);
+          return;
+        }
+        targetRow.nominalConc = parsed.value;
+        targetRow.nominalConcManual = !parsed.empty;
+      } else if (col >= ANALYTE_START_COL) {
+        const analyte = analytes[col - ANALYTE_START_COL];
+        if (!analyte) return;
+        const raw =
+          newValue.kind === GridCellKind.Number || newValue.kind === GridCellKind.Text
+            ? newValue.data
+            : undefined;
+        const parsed = parseOptionalNumberFromInput(raw, true);
+        if (!parsed.valid) {
+          onNotice?.(`Signal for ${analyte} must be a valid number.`);
+          return;
+        }
+        if (parsed.empty || parsed.value === undefined) {
+          delete targetRow.signals[analyte];
+        } else {
+          targetRow.signals[analyte] = parsed.value;
         }
       }
 
       updated[row] = targetRow;
       onChange(updated);
     },
-    [standards, analytes, onChange],
+    [analytes, onChange, onNotice, rows, unit],
   );
 
   const handlePaste = useCallback(
@@ -197,29 +207,24 @@ export function StandardDataGrid({
       if (values.length === 0 || values[0]?.length === 0) return false;
 
       const [startCol, startRow] = target;
-      const updated = [...standards];
+      const updated = [...rows];
+      let invalidCount = 0;
 
       values.forEach((rowVals, rOffset) => {
         const targetRow = startRow + rOffset;
 
         while (updated.length <= targetRow) {
-          const prev = updated[updated.length - 1];
-          const nextNom = prev ? prev.nominalConc + 50 : 10;
-          const defaultReadings: Record<string, StandardReading> = {};
-          analytes.forEach((a) => {
-            defaultReadings[a] = { nominalConc: nextNom, signal: 0 };
-          });
-
           updated.push({
-            standardName: `Std ${nextNom}`,
-            nominalConc: nextNom,
-            readings: defaultReadings,
+            standardName: '',
+            nominalConc: undefined,
+            nominalConcManual: false,
+            signals: {},
           });
         }
 
-        const rowItem: StandardRowItem = {
+        const rowItem: StandardGroupRow = {
           ...updated[targetRow]!,
-          readings: { ...updated[targetRow]!.readings },
+          signals: { ...updated[targetRow]!.signals },
         };
 
         rowVals.forEach((val, cOffset) => {
@@ -228,22 +233,33 @@ export function StandardDataGrid({
 
           if (targetCol === 0) {
             rowItem.standardName = clean;
-            const parsedNom = parseNominalFromName(clean, rowItem.nominalConc);
-            rowItem.nominalConc = parsedNom;
-            analytes.forEach((a) => {
-              rowItem.readings[a] = {
-                nominalConc: parsedNom,
-                signal: rowItem.readings[a]?.signal ?? 0,
-              };
-            });
-          } else if (targetCol >= 1) {
-            const aIdx = targetCol - 1;
-            const analyte = analytes[aIdx];
-            if (analyte) {
-              rowItem.readings[analyte] = {
-                nominalConc: rowItem.nominalConc,
-                signal: parseFloat(clean) || 0,
-              };
+            if (!rowItem.nominalConcManual) {
+              const parsed = parseNominalFromName(clean);
+              if (parsed !== undefined) {
+                rowItem.nominalConc = parsed;
+              }
+            }
+          } else if (targetCol === 1) {
+            const parsed = parseOptionalNumberFromInput(clean, false);
+            if (!parsed.valid) {
+              invalidCount++;
+              return;
+            }
+            // Explicit clipboard Nominal Conc always overrides auto-parsed Standard Name values.
+            rowItem.nominalConc = parsed.value;
+            rowItem.nominalConcManual = !parsed.empty;
+          } else if (targetCol >= ANALYTE_START_COL) {
+            const analyte = analytes[targetCol - ANALYTE_START_COL];
+            if (!analyte) return;
+            const parsed = parseOptionalNumberFromInput(clean, true);
+            if (!parsed.valid) {
+              invalidCount++;
+              return;
+            }
+            if (parsed.empty || parsed.value === undefined) {
+              delete rowItem.signals[analyte];
+            } else {
+              rowItem.signals[analyte] = parsed.value;
             }
           }
         });
@@ -254,46 +270,41 @@ export function StandardDataGrid({
       onChange(updated);
 
       if (onNotice) {
-        const colTitle =
-          startCol === 0 ? 'Label' : (analytes[startCol - 1] ?? `Column ${startCol + 1}`);
+        const colTitle = columns[startCol]?.title ?? `Column ${startCol + 1}`;
+        const suffix =
+          invalidCount > 0
+            ? ` (${invalidCount} invalid ${invalidCount === 1 ? 'cell' : 'cells'} skipped)`
+            : '';
         onNotice(
-          `Pasted ${values.length} rows x ${values[0]?.length} columns from clipboard at row ${startRow + 1}, ${colTitle}.`,
+          `Pasted ${values.length} rows x ${values[0]?.length} columns at row ${startRow + 1}, ${colTitle}.${suffix}`,
         );
       }
 
       return false;
     },
-    [standards, analytes, onChange, onNotice],
+    [analytes, columns, onChange, onNotice, rows],
   );
 
   const handleAddRow = useCallback(() => {
-    const last = standards[standards.length - 1];
-    const nextNominal = last ? last.nominalConc + 100 : 10;
-    const defaultReadings: Record<string, StandardReading> = {};
-    analytes.forEach((a) => {
-      defaultReadings[a] = { nominalConc: nextNominal, signal: 0 };
-    });
-
-    const newPoint: StandardRowItem = {
-      standardName: `Std ${nextNominal}`,
-      nominalConc: nextNominal,
-      readings: defaultReadings,
+    const newRow: StandardGroupRow = {
+      standardName: '',
+      nominalConc: undefined,
+      nominalConcManual: false,
+      signals: {},
     };
-    onChange([...standards, newPoint]);
-  }, [standards, analytes, onChange]);
+    onChange([...rows, newRow]);
+  }, [onChange, rows]);
 
   const handleDeleteSelected = useCallback(() => {
     const selectedRows = selection.rows.toArray();
-    const minPointsMsg = 'Calibration curve requires at least 3 data points (df >= 1).';
+    const minPointsMsg = 'Calibration curve requires at least 3 rows in the standards table.';
 
     if (selectedRows.length > 0) {
-      if (standards.length - selectedRows.length < 3) {
-        if (onNotice) onNotice(minPointsMsg);
-        else alert(minPointsMsg);
+      if (rows.length - selectedRows.length < 3) {
+        onNotice?.(minPointsMsg);
         return;
       }
-      const updated = standards.filter((_, i) => !selectedRows.includes(i));
-      onChange(updated);
+      onChange(rows.filter((_, i) => !selectedRows.includes(i)));
       setSelection({
         columns: CompactSelection.empty(),
         rows: CompactSelection.empty(),
@@ -303,28 +314,25 @@ export function StandardDataGrid({
 
     if (selection.current) {
       const targetRow = selection.current.cell[1];
-      if (standards.length <= 3) {
-        if (onNotice) onNotice(minPointsMsg);
-        else alert(minPointsMsg);
+      if (rows.length <= 3) {
+        onNotice?.(minPointsMsg);
         return;
       }
-      const updated = standards.filter((_, i) => i !== targetRow);
-      onChange(updated);
+      onChange(rows.filter((_, i) => i !== targetRow));
     }
-  }, [standards, selection, onChange, onNotice]);
+  }, [onChange, onNotice, rows, selection]);
 
   const handleDeleteCallback = useCallback(
     (sel: GridSelection) => {
-      const minPointsMsg = 'Calibration curve requires at least 3 data points (df >= 1).';
+      const minPointsMsg = 'Calibration curve requires at least 3 rows in the standards table.';
+
       if (sel.rows.length > 0) {
         const selectedRows = sel.rows.toArray();
-        if (standards.length - selectedRows.length < 3) {
-          if (onNotice) onNotice(minPointsMsg);
-          else alert(minPointsMsg);
+        if (rows.length - selectedRows.length < 3) {
+          onNotice?.(minPointsMsg);
           return false;
         }
-        const updated = standards.filter((_, i) => !selectedRows.includes(i));
-        onChange(updated);
+        onChange(rows.filter((_, i) => !selectedRows.includes(i)));
         setSelection({
           columns: CompactSelection.empty(),
           rows: CompactSelection.empty(),
@@ -333,93 +341,108 @@ export function StandardDataGrid({
       }
 
       if (sel.current) {
-        const [col, row] = sel.current.cell;
-        const updated = [...standards];
-        const target = updated[row];
-        if (target) {
-          const newTarget = { ...target, readings: { ...target.readings } };
-          if (col === 0) {
-            newTarget.standardName = '';
-          } else if (col >= 1) {
-            const aIdx = col - 1;
-            const a = analytes[aIdx];
-            if (a) {
-              newTarget.readings[a] = { nominalConc: target.nominalConc, signal: 0 };
+        const { x, y, width, height } = sel.current.range;
+        const updated = [...rows];
+        let touched = false;
+
+        for (let r = y; r < y + height; r++) {
+          const target = updated[r];
+          if (!target) continue;
+          const nextRow: StandardGroupRow = {
+            ...target,
+            signals: { ...target.signals },
+          };
+
+          for (let c = x; c < x + width; c++) {
+            if (c === 0) {
+              nextRow.standardName = '';
+              touched = true;
+            } else if (c === 1) {
+              nextRow.nominalConc = undefined;
+              nextRow.nominalConcManual = false;
+              touched = true;
+            } else if (c >= ANALYTE_START_COL) {
+              const analyte = analytes[c - ANALYTE_START_COL];
+              if (analyte && nextRow.signals[analyte] !== undefined) {
+                delete nextRow.signals[analyte];
+                touched = true;
+              }
             }
           }
-          updated[row] = newTarget;
-          onChange(updated);
+
+          updated[r] = nextRow;
         }
-        return true;
+
+        if (touched) {
+          onChange(updated);
+          return true;
+        }
       }
 
       return false;
     },
-    [standards, analytes, onChange, onNotice],
+    [analytes, onChange, onNotice, rows],
   );
 
   const selectedRowCount = selection.rows.length;
   const activeCellDesc = useMemo(() => {
     if (selection.current) {
       const [col, row] = selection.current.cell;
-      const colTitle =
-        col === 0
-          ? `Standard Label (${unit})`
-          : analytes[col - 1]
-            ? `${analytes[col - 1]} (${signalUnit})`
-            : `Column ${col + 1}`;
+      const colTitle = columns[col]?.title ?? `Column ${col + 1}`;
       return `Active cell: Row ${row + 1}, ${colTitle}`;
     }
-    return 'Select a cell or range to copy/paste';
-  }, [selection, analytes, signalUnit, unit]);
+    return 'Select a cell or range to copy or paste';
+  }, [columns, selection]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleAddRow}
-            className="inline-flex items-center gap-1 min-h-9 px-2.5 py-1 text-xs rounded-lg border border-slate-300 bg-white hover:bg-slate-50 font-medium text-slate-800 transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            className="inline-flex items-center gap-1.5 min-h-11 sm:min-h-9 px-3 py-1.5 text-xs rounded-lg border border-slate-400 bg-white hover:bg-slate-50 font-medium text-slate-900 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Add Row
+            Add Standard Row
           </button>
           <button
             type="button"
             onClick={handleDeleteSelected}
-            disabled={standards.length <= 3}
-            className={`inline-flex items-center gap-1 min-h-9 px-2.5 py-1 text-xs rounded-lg border transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+            disabled={rows.length <= 3}
+            className={`inline-flex items-center gap-1.5 min-h-11 sm:min-h-9 px-3 py-1.5 text-xs rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
               selectedRowCount > 0
-                ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 font-medium'
-                : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40'
+                ? 'border-red-700 bg-red-50 text-red-800 hover:bg-red-100 font-medium'
+                : 'border-slate-400 bg-white hover:bg-slate-50 text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed'
             }`}
           >
             <Trash className="w-3.5 h-3.5" aria-hidden="true" />
             {selectedRowCount > 0
               ? `Delete ${selectedRowCount} ${selectedRowCount === 1 ? 'Row' : 'Rows'}`
-              : 'Delete Row'}
+              : 'Delete Selected Row'}
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-700">
           <span className="flex items-center gap-1">
-            <ViewGrid className="w-3 h-3 text-slate-600" aria-hidden="true" />
-            {activeCellDesc}
+            <ViewGrid className="w-3.5 h-3.5 text-slate-700 shrink-0" aria-hidden="true" />
+            <span>{activeCellDesc}</span>
           </span>
-          <span className="text-slate-400" aria-hidden="true">|</span>
-          <span className="text-slate-600">
-            {standards.length} rows &times; {columns.length} columns
+          <span className="text-slate-500" aria-hidden="true">
+            |
+          </span>
+          <span className="text-slate-700">
+            {rows.length} rows &times; {columns.length} columns
           </span>
         </div>
       </div>
 
-      <div className="w-full h-[280px] rounded-lg border border-slate-200 overflow-hidden bg-white shadow-2xs relative">
+      <div className="w-full h-[280px] rounded-lg border border-slate-300 overflow-hidden bg-white">
         <DataEditor
           width="100%"
           height="100%"
           columns={columns}
-          rows={standards.length}
+          rows={rows.length}
           getCellContent={getCellContent}
           onCellEdited={handleCellEdited}
           onPaste={handlePaste}

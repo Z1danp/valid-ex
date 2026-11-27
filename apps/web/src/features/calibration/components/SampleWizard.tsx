@@ -27,7 +27,7 @@ export interface SampleWizardProps {
   setSampleRows: (updated: SampleRowState[]) => void;
   qcRows: SampleRowState[];
   setQcRows: (updated: SampleRowState[]) => void;
-  defaultCcvTarget?: number;
+  defaultCcvTarget?: Record<string, number | undefined> | number;
   unit: SolutionConcUnit;
   inputMode: InputMode;
   signalUnit: SignalUnit;

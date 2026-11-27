@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   QC_SAMPLE_TYPES,
   ROUTINE_SAMPLE_TYPES,
+  fillMissingCcvExpectedConc,
   getAvailableParentOptions,
   isParentAllowed,
   isPrepParamsRequired,
@@ -290,4 +291,25 @@ test('validateBatchSamples passes when blank_method and ccv have null prep param
   assert.equal(dto[4]?.expectedConc, null);
   assert.equal(dto[4]?.spikeAdded, null);
   assert.equal(dto[4]?.volume, 50);
+});
+
+test('fillMissingCcvExpectedConc applies per-analyte defaults without overwriting manual entries', () => {
+  const rows: SampleRowState[] = [
+    makeRow({
+      id: 'CCV1',
+      type: 'ccv',
+      weight: null,
+      vol: null,
+      df: null,
+      expectedConc: { Al: 99 },
+    }),
+  ];
+
+  const filled = fillMissingCcvExpectedConc(rows, ['Al', 'Cd', 'Hg'], {
+    Al: 100,
+    Cd: 50,
+    Hg: 2,
+  });
+
+  assert.deepEqual(filled[0]?.expectedConc, { Al: 99, Cd: 50, Hg: 2 });
 });

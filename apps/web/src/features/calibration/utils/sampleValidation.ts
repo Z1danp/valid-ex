@@ -438,9 +438,9 @@ export function getDefaultCcvTargetFromStandards(
 export function fillMissingCcvExpectedConc(
   rows: SampleRowState[],
   analytes: readonly string[],
-  defaultTarget: number | undefined,
+  defaultTargets: Record<string, number | undefined> | number | undefined,
 ): SampleRowState[] {
-  if (defaultTarget === undefined || analytes.length === 0) return rows;
+  if (defaultTargets === undefined || analytes.length === 0) return rows;
 
   let changed = false;
   const nextRows = rows.map((row) => {
@@ -449,8 +449,10 @@ export function fillMissingCcvExpectedConc(
     let rowChanged = false;
     const nextExpected = { ...(row.expectedConc ?? {}) };
     for (const analyte of analytes) {
-      if (nextExpected[analyte] === undefined) {
-        nextExpected[analyte] = defaultTarget;
+      const targetVal =
+        typeof defaultTargets === 'number' ? defaultTargets : defaultTargets[analyte];
+      if (nextExpected[analyte] === undefined && targetVal !== undefined) {
+        nextExpected[analyte] = targetVal;
         rowChanged = true;
       }
     }
